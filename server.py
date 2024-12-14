@@ -1,11 +1,18 @@
-import dotenv
-from sqlmodel import create_engine, SQLModel
-from models import User, Application, ApplicationAction, TimeLog, Notification
+from fastapi import FastAPI
+from auth.routes import authRouter
+from config import engine
+from sqlmodel import SQLModel
 
-dotenv.load_dotenv()
-import os
+app = FastAPI()
+
+
+app.include_router(authRouter, prefix="/api/auth")
+
+
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
+
 
 if __name__ == "__main__":
-    db_url: str = os.getenv("DB_URL", "")
-    engine = create_engine(db_url)
     SQLModel.metadata.create_all(engine)

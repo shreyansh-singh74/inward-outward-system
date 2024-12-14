@@ -29,7 +29,7 @@ class ActionType(str, PyEnum):
 
 
 class User(SQLModel, table=True):
-    id: str = Field(default=uuid4, primary_key=True)
+    id: str = Field(default=uuid4(), primary_key=True)
     name: str = Field(max_length=200)
     role: UserRole
     department: str
@@ -39,7 +39,9 @@ class User(SQLModel, table=True):
     isAccountVerified: bool = Field(default=False)
     password: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    applications: List["Application"] = Relationship(back_populates="my_application")
+    applications: List["Application"] = Relationship(
+        back_populates="my_application",
+    )
     handled_applications: List["Application"] = Relationship(
         back_populates="current_handler"
     )
@@ -47,11 +49,13 @@ class User(SQLModel, table=True):
 
 class Application(SQLModel, table=True):
     id: str = Field(default=uuid4, primary_key=True)
-    user_id: str = Field(foreign_key="user.id")
+    user_id: str = Field(
+        foreign_key="user.id",
+    )
     description: str
     document_url: Optional[str] = None
     status: ApplicationStatus = Field(default=ApplicationStatus.PENDING)
-    current_handler_id: Optional[str] = Field(foreign_key="user.id")
+    current_handler_id: Optional[str] = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
