@@ -15,6 +15,7 @@ from mail import create_message
 from .utils import create_url_safe_token, decode_url_safe_token
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import HTTPException
+from db.models import UserRole
 
 authRouter = APIRouter()
 
@@ -23,15 +24,16 @@ authRouter = APIRouter()
 async def signup(user: SignUpSchema):
     hashedPassword = bcrypt.hashpw(user.password.encode("utf-8"), bcrypt.gensalt())
     with Session(engine) as session:
-        statement = select(User).where(User.tcet_email == User.tcet_email)
+        statement = select(User).where(User.tcet_email == user.email)
         results = session.scalars(statement).first()
+        print(results)
         if results:
             return {"message": "User already exists"}
     newUser = User(
         password=hashedPassword,
         tcet_email=user.email,
         username=user.name,
-        role=user.role,
+        role=UserRole.STUDENT,
         department=user.department,
     )
     with Session(engine) as session:
@@ -45,7 +47,7 @@ async def signup(user: SignUpSchema):
     <p>Please click this <a href="{link}">link</a> to verify your email</p>
     """
     subject = "Verify Your email"
-    emails = [user.email, user.tcet_email]
+    emails = [user.email]
     await create_message(emails, subject, html)
     return {"message": "User created successfully"}
 
@@ -91,15 +93,18 @@ async def login(body: LoginSchema, response: Response):
     access_token = create_access_token(
         data={"sub": str(results.id)}, expires_delta=access_token_expires
     )
+    response = JSONResponse(
+        content={"access_token": access_token, "token_type": "bearer"},
+        status_code=201,
+    )
     response.set_cookie(
         key="access_token",
         value=access_token,
         max_age=3600 * 24 * 10,
         httponly=True,
+        secure=False,
     )
-    return JSONResponse(
-        content={"access_token": access_token, "token_type": "bearer"}, status_code=201
-    )
+    return response
 
 
 @authRouter.post("/password-reset-request")

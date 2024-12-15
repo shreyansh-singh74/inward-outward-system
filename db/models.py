@@ -13,10 +13,11 @@ class Base(DeclarativeBase):
 class UserRole(str, PyEnum):
     STUDENT = "student"
     PRINCIPAL = "principal"
-    DEPARTMENT = "department"
+    HOD = "hod"
     EXAM_SECTION = "exam_section"
     T_AND_P = "t_and_p"
     CLERK = "clerk"
+    SYSTEM_ADMIN = "system_admin"
 
 
 class ApplicationStatus(str, PyEnum):
@@ -37,7 +38,7 @@ class User(Base):
     __tablename__ = "users"
     id: Mapped[UUID] = mapped_column(primary_key=True, default=lambda: uuid4())
     username: Mapped[str] = mapped_column(String(30))
-    role: Mapped[UserRole] = mapped_column(default=UserRole.STUDENT)
+    role: Mapped[UserRole] = mapped_column(String(200), default=UserRole.STUDENT)
     department: Mapped[str] = mapped_column(String(200))
     tcet_email: Mapped[str] = mapped_column(String(200))
     isEmailVerified: Mapped[bool] = mapped_column(default=False)
