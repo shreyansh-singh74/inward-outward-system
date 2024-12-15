@@ -16,5 +16,10 @@ class LoginSchema(BaseModel):
     password: str
 
 
-class EmailSchema(BaseModel):
+class ForgotPasswordSchema(BaseModel):
     email: str
+
+
+class PasswordResetConfirm(BaseModel):
+    new_password: str
+    confirm_password: str
