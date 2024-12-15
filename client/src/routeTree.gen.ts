@@ -14,6 +14,9 @@ import { Route as rootRoute } from './routes/__root'
 import { Route as AuthImport } from './routes/_auth'
 import { Route as AuthSignupImport } from './routes/_auth/signup'
 import { Route as AuthLoginImport } from './routes/_auth/login'
+import { Route as AuthForgotpasswordrequestImport } from './routes/_auth/forgot_password_request'
+import { Route as AuthVerifyTokenImport } from './routes/_auth/verify.$token'
+import { Route as AuthResetpasswordTokenImport } from './routes/_auth/reset_password.$token'
 
 // Create/Update Routes
 
@@ -34,6 +37,24 @@ const AuthLoginRoute = AuthLoginImport.update({
   getParentRoute: () => AuthRoute,
 } as any)
 
+const AuthForgotpasswordrequestRoute = AuthForgotpasswordrequestImport.update({
+  id: '/forgot_password_request',
+  path: '/forgot_password_request',
+  getParentRoute: () => AuthRoute,
+} as any)
+
+const AuthVerifyTokenRoute = AuthVerifyTokenImport.update({
+  id: '/verify/$token',
+  path: '/verify/$token',
+  getParentRoute: () => AuthRoute,
+} as any)
+
+const AuthResetpasswordTokenRoute = AuthResetpasswordTokenImport.update({
+  id: '/reset_password/$token',
+  path: '/reset_password/$token',
+  getParentRoute: () => AuthRoute,
+} as any)
+
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
@@ -44,6 +65,13 @@ declare module '@tanstack/react-router' {
       fullPath: ''
       preLoaderRoute: typeof AuthImport
       parentRoute: typeof rootRoute
+    }
+    '/_auth/forgot_password_request': {
+      id: '/_auth/forgot_password_request'
+      path: '/forgot_password_request'
+      fullPath: '/forgot_password_request'
+      preLoaderRoute: typeof AuthForgotpasswordrequestImport
+      parentRoute: typeof AuthImport
     }
     '/_auth/login': {
       id: '/_auth/login'
@@ -59,48 +87,96 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSignupImport
       parentRoute: typeof AuthImport
     }
+    '/_auth/reset_password/$token': {
+      id: '/_auth/reset_password/$token'
+      path: '/reset_password/$token'
+      fullPath: '/reset_password/$token'
+      preLoaderRoute: typeof AuthResetpasswordTokenImport
+      parentRoute: typeof AuthImport
+    }
+    '/_auth/verify/$token': {
+      id: '/_auth/verify/$token'
+      path: '/verify/$token'
+      fullPath: '/verify/$token'
+      preLoaderRoute: typeof AuthVerifyTokenImport
+      parentRoute: typeof AuthImport
+    }
   }
 }
 
 // Create and export the route tree
 
 interface AuthRouteChildren {
+  AuthForgotpasswordrequestRoute: typeof AuthForgotpasswordrequestRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthSignupRoute: typeof AuthSignupRoute
+  AuthResetpasswordTokenRoute: typeof AuthResetpasswordTokenRoute
+  AuthVerifyTokenRoute: typeof AuthVerifyTokenRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
+  AuthForgotpasswordrequestRoute: AuthForgotpasswordrequestRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthSignupRoute: AuthSignupRoute,
+  AuthResetpasswordTokenRoute: AuthResetpasswordTokenRoute,
+  AuthVerifyTokenRoute: AuthVerifyTokenRoute,
 }
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 export interface FileRoutesByFullPath {
   '': typeof AuthRouteWithChildren
+  '/forgot_password_request': typeof AuthForgotpasswordrequestRoute
   '/login': typeof AuthLoginRoute
   '/signup': typeof AuthSignupRoute
+  '/reset_password/$token': typeof AuthResetpasswordTokenRoute
+  '/verify/$token': typeof AuthVerifyTokenRoute
 }
 
 export interface FileRoutesByTo {
   '': typeof AuthRouteWithChildren
+  '/forgot_password_request': typeof AuthForgotpasswordrequestRoute
   '/login': typeof AuthLoginRoute
   '/signup': typeof AuthSignupRoute
+  '/reset_password/$token': typeof AuthResetpasswordTokenRoute
+  '/verify/$token': typeof AuthVerifyTokenRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/_auth': typeof AuthRouteWithChildren
+  '/_auth/forgot_password_request': typeof AuthForgotpasswordrequestRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/signup': typeof AuthSignupRoute
+  '/_auth/reset_password/$token': typeof AuthResetpasswordTokenRoute
+  '/_auth/verify/$token': typeof AuthVerifyTokenRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '' | '/login' | '/signup'
+  fullPaths:
+    | ''
+    | '/forgot_password_request'
+    | '/login'
+    | '/signup'
+    | '/reset_password/$token'
+    | '/verify/$token'
   fileRoutesByTo: FileRoutesByTo
-  to: '' | '/login' | '/signup'
-  id: '__root__' | '/_auth' | '/_auth/login' | '/_auth/signup'
+  to:
+    | ''
+    | '/forgot_password_request'
+    | '/login'
+    | '/signup'
+    | '/reset_password/$token'
+    | '/verify/$token'
+  id:
+    | '__root__'
+    | '/_auth'
+    | '/_auth/forgot_password_request'
+    | '/_auth/login'
+    | '/_auth/signup'
+    | '/_auth/reset_password/$token'
+    | '/_auth/verify/$token'
   fileRoutesById: FileRoutesById
 }
 
@@ -128,9 +204,16 @@ export const routeTree = rootRoute
     "/_auth": {
       "filePath": "_auth.tsx",
       "children": [
+        "/_auth/forgot_password_request",
         "/_auth/login",
-        "/_auth/signup"
+        "/_auth/signup",
+        "/_auth/reset_password/$token",
+        "/_auth/verify/$token"
       ]
+    },
+    "/_auth/forgot_password_request": {
+      "filePath": "_auth/forgot_password_request.tsx",
+      "parent": "/_auth"
     },
     "/_auth/login": {
       "filePath": "_auth/login.tsx",
@@ -138,6 +221,14 @@ export const routeTree = rootRoute
     },
     "/_auth/signup": {
       "filePath": "_auth/signup.tsx",
+      "parent": "/_auth"
+    },
+    "/_auth/reset_password/$token": {
+      "filePath": "_auth/reset_password.$token.tsx",
+      "parent": "/_auth"
+    },
+    "/_auth/verify/$token": {
+      "filePath": "_auth/verify.$token.tsx",
       "parent": "/_auth"
     }
   }

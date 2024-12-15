@@ -15,6 +15,7 @@ import { Link } from "@tanstack/react-router";
 import { Select } from "@/components/ui/select";
 import SelectFormControl from "@/components/select";
 import { SignupDepartments } from "@/contants";
+import { toast } from "sonner";
 const SignUpForm = () => {
   const [pending, setPending] = React.useState(false);
   const form = useForm<SignUpType>({
@@ -26,8 +27,21 @@ const SignUpForm = () => {
       department: "",
     },
   });
-  const onSubmit = (values: SignUpType) => {
-    console.log(values);
+  const onSubmit = async (values: SignUpType) => {
+    setPending(true);
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(values),
+    });
+    if (res.status !== 200) {
+      toast.error("Failed to create account");
+      return;
+    }
+    toast.success("Account created successfully verify your account");
+    setPending(false);
   };
   return (
     <Card className="w-[90%] md:w-[50%] lg:w-[40%] m-auto">

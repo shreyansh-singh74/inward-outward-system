@@ -41,7 +41,7 @@ const SignInForm = () => {
               <Input label="Email" name="email" />
               <Input label="Password" name="password" type="password" />
               <Link
-                href={"/agency/forget-password"}
+                to="/forgot_password_request"
                 className="flex justify-end  text-blue-600 my-3 text-sm hover:underline hover:underline-offset-2"
               >
                 Forgot Password?

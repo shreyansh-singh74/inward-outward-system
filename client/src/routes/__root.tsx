@@ -7,6 +7,7 @@ import {
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 import { userAtom } from "@/lib/atoms";
 import { useSetAtom } from "jotai";
+import { Toaster } from "@/components/ui/sonner";
 export const Route = createRootRoute({
   loader: async () => {
     const res = await fetch("/api/authenticate");
@@ -27,6 +28,7 @@ export const Route = createRootRoute({
       <>
         <Outlet />
         <TanStackRouterDevtools />
+        <Toaster />
       </>
     );
   },
