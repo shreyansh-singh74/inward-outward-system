@@ -62,8 +62,9 @@ async def updateUserInfo(body: UpdateUser, access_token: str = Cookie(None)):
             return JSONResponse(
                 content={"message": "You dont't have access"}, status_code=401
             )
-        statement = select(User).where(User.id != UUID(body.user_id))
+        statement = select(User).where(User.id == UUID(body.user_id))
         result = session.scalars(statement).first()
+        print(result)
         if not result:
             return JSONResponse(content={"message": "User not found"}, status_code=404)
         result.department = body.department

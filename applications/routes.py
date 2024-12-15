@@ -9,7 +9,11 @@ from config import JWT_SECRET, JWT_ALGORITHM, engine
 from uuid import UUID
 from db.models import UserRole, Applications, ApplicationActions
 from datetime import datetime
-from .schema import CreateApplicationSchema, UpdateApplicationSchema
+from .schema import (
+    CreateApplicationSchema,
+    UpdateApplicationSchema,
+    ForwardApplicationSchema,
+)
 from uuid import uuid4
 from typing import Annotated
 
@@ -128,18 +132,40 @@ async def getApplication(application_id: UUID, access_token: str = Cookie(None))
     return JSONResponse(content={"message": "Application not found"}, status_code=404)
 
 
-@application_router.get("/update/{application_id}")
+@application_router.post("/update/{application_id}")
 async def update(
     application_id: UUID,
-    body: CreateApplicationSchema,
+    body: UpdateApplicationSchema,
     access_token: str = Cookie(None),
 ):
     user = protectRoute(access_token)
     if not isinstance(user, User):
         return user
+    with Session(engine) as session:
+        statement = select(Applications).where(Applications.id == application_id)
+        result = session.scalars(statement).first()
+        if not result:
+            return JSONResponse(
+                content={"message": "Application not found"}, status_code=404
+            )
+        if result.current_handler_id != user.id:
+            return JSONResponse(
+                content={"message": "You dont't have access"}, status_code=401
+            )
+        result.status = body.status
+        newApplicationAction = ApplicationActions(
+            from_user_id=user.id,
+            to_user_id=result.created_by_id,
+            application_id=result.id,
+            action_type=body.status,
+            comments=body.remark,
+        )
+        session.add(newApplicationAction)
+        session.commit()
+    return JSONResponse(content={"message": "Application updated"}, status_code=200)
 
 
-@application_router.get("")
+@application_router.get("/")
 async def getAllApplications(
     access_token: str = Cookie(None),
 ):
@@ -166,9 +192,40 @@ async def getAllApplications(
 @application_router.post("/forward/{application_id}")
 async def ForwardApplication(
     application_id: UUID,
-    body: UpdateApplicationSchema,
+    body: ForwardApplicationSchema,
     access_token: str = Cookie(None),
 ):
     user = protectRoute(access_token)
     if not isinstance(user, User):
         return user
+    with Session(engine) as session:
+        statement = select(Applications).where(Applications.id == application_id)
+        result = session.scalars(statement).first()
+        if not result:
+            return JSONResponse(
+                content={"message": "Application not found"}, status_code=404
+            )
+        if result.current_handler_id != user.id:
+            return JSONResponse(
+                content={"message": "You dont't have access"}, status_code=401
+            )
+        statement = select(User).where(
+            User.role == body.role and User.department == body.department
+        )
+        receiver = session.scalars(statement).first()
+        if not receiver:
+            return JSONResponse(
+                content={"message": "Receiver not found"}, status_code=404
+            )
+        result.current_handler_id = receiver.id
+        result.status = "FORWARDED"
+        newApplicationAction = ApplicationActions(
+            from_user_id=user.id,
+            to_user_id=receiver.id,
+            application_id=result.id,
+            action_type="FORWARD",
+            comments=body.remark,
+        )
+        session.add(newApplicationAction)
+        session.commit()
+    return JSONResponse(content={"message": "Application forwarded"}, status_code=200)

@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional
 
 
 class CreateApplicationSchema(BaseModel):
@@ -9,3 +10,10 @@ class CreateApplicationSchema(BaseModel):
 
 class UpdateApplicationSchema(BaseModel):
     status: str
+    remark: Optional[str]
+
+
+class ForwardApplicationSchema(BaseModel):
+    role: str
+    department: str
+    remark: Optional[str]
