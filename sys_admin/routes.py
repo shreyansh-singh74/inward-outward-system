@@ -1,15 +1,13 @@
 from fastapi.responses import JSONResponse
-from fastapi.exceptions import HTTPException
 from sqlalchemy import Select as select
 from sqlalchemy.orm import Session
 from db.models import User
-from fastapi import APIRouter, status, Response, Cookie
+from fastapi import APIRouter, Cookie
 import jwt
 from config import JWT_SECRET, JWT_ALGORITHM, engine
 from uuid import UUID
 from db.models import UserRole
 from .schema import UpdateUser
-import json
 from datetime import datetime
 
 sys_admin_router = APIRouter()

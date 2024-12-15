@@ -89,9 +89,8 @@ async def login(body: LoginSchema, response: Response):
         return JSONResponse(content={"message": "Invalid Credentials"}, status_code=401)
     if not results.isEmailVerified:
         return {"message": "Email not verified"}, 401
-    access_token_expires = timedelta(minutes=float(ACCESS_TOKEN_EXPIRY))
     access_token = create_access_token(
-        data={"sub": str(results.id)}, expires_delta=access_token_expires
+        data={"sub": str(results.id)},
     )
     response = JSONResponse(
         content={"access_token": access_token, "token_type": "bearer"},

@@ -20,7 +20,7 @@ EMAIL_FROm = os.getenv("EMAIL_FROM")
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=60 * 24 * 15))
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
     return encoded_jwt
