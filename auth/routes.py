@@ -1,8 +1,9 @@
 from .schema import SignUpSchema, LoginSchema, EmailSchema
 
 import bcrypt
-from sqlmodel import Session, select
-from models import User
+from sqlalchemy import Select as select
+from sqlalchemy.orm import Session
+from db.models import User
 from fastapi import APIRouter
 from config import engine, ACCESS_TOKEN_EXPIRY, create_access_token
 from datetime import timedelta
@@ -25,11 +26,11 @@ async def send_mail(emails: EmailSchema):
 async def signup(user: SignUpSchema):
     hashedPassword = bcrypt.hashpw(user.password.encode("utf-8"), bcrypt.gensalt())
     with Session(engine) as session:
-        statement = select(User).where(User.email == user.email)
-        results = session.exec(statement).first()
+        statement = select(User).where(User.tcet_email == User.tcet_email)
+        results = session.scalars(statement)
         if results:
             return {"message": "User already exists"}
-    newUser = User(email=user.email, password=str(hashedPassword), **user.dict())
+    newUser = User(email=user.tcet_email, password=str(hashedPassword), **user.dict())
     with Session(engine) as session:
         session.add(newUser)
         session.commit()
@@ -50,7 +51,7 @@ async def signup(user: SignUpSchema):
 async def login(body: LoginSchema):
     with Session(engine) as session:
         statement = select(User).where(User.email == body.email)
-        results = session.exec(statement).first()
+        results = None
         if not results:
             return {"message": "Invalid Credentials"}, 401
     verifyPassword = bcrypt.checkpw(
@@ -58,9 +59,9 @@ async def login(body: LoginSchema):
     )
     if not verifyPassword:
         return {"message": "Invalid Credentials"}, 401
-    if not results.isEmailVerified:
+    if not results.is_email_verified:
         return {"message": "Email not verified"}, 401
-    if not results.isAccountVerified:
+    if not results.is_account_verified:
         return {"message": "Account is not verified"}, 401
     access_token_expires = timedelta(minutes=float(ACCESS_TOKEN_EXPIRY))
     access_token = create_access_token(

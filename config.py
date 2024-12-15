@@ -1,15 +1,15 @@
 import dotenv
 import os
 from typing import Optional
-from sqlmodel import create_engine, SQLModel
-from models import User, Application, ApplicationAction, TimeLog, Notification
+from db.models import User, Applications
 from datetime import datetime, timedelta
 import jwt
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy import create_engine
 
 dotenv.load_dotenv()
 db_url: str = os.getenv("DB_URL", "")
-engine = create_engine(db_url)
+engine = create_engine(db_url, echo=True)
 JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_ALGORITHM = os.getenv("ALGORITHM")
 ACCESS_TOKEN_EXPIRY = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "")
