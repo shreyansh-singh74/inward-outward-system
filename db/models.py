@@ -44,6 +44,7 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(timezone.utc)
     )
+    password: Mapped[str] = mapped_column(String(300))
     applications: Mapped[List["Applications"]] = relationship(
         "Applications",
         back_populates="creator",

@@ -1,25 +1,17 @@
-from .schema import SignUpSchema, LoginSchema, EmailSchema
+from .schema import SignUpSchema, LoginSchema
 
 import bcrypt
 from sqlalchemy import Select as select
 from sqlalchemy.orm import Session
 from db.models import User
-from fastapi import APIRouter
+from fastapi import APIRouter, status
 from config import engine, ACCESS_TOKEN_EXPIRY, create_access_token
 from datetime import timedelta
 from mail import create_message
-from .utils import create_url_safe_token
+from .utils import create_url_safe_token, decode_url_safe_token
+from fastapi.responses import JSONResponse
 
 authRouter = APIRouter()
-
-
-@authRouter.post("/send_mail")
-async def send_mail(emails: EmailSchema):
-    email = emails.email
-    html = "<h1>Welcome to the app</h1>"
-    subject = "Welcome to our app"
-    await create_message([email], subject, html)
-    return {"message": "Email sent successfully"}
 
 
 @authRouter.post("/signup")
@@ -27,10 +19,16 @@ async def signup(user: SignUpSchema):
     hashedPassword = bcrypt.hashpw(user.password.encode("utf-8"), bcrypt.gensalt())
     with Session(engine) as session:
         statement = select(User).where(User.tcet_email == User.tcet_email)
-        results = session.scalars(statement)
+        results = session.scalars(statement).first()
         if results:
             return {"message": "User already exists"}
-    newUser = User(email=user.tcet_email, password=str(hashedPassword), **user.dict())
+    newUser = User(
+        password=hashedPassword,
+        tcet_email=user.email,
+        username=user.name,
+        role=user.role,
+        department=user.department,
+    )
     with Session(engine) as session:
         session.add(newUser)
         session.commit()
@@ -45,6 +43,27 @@ async def signup(user: SignUpSchema):
     emails = [user.email, user.tcet_email]
     await create_message(emails, subject, html)
     return {"message": "User created successfully"}
+
+
+@authRouter.get("/verify/{token}")
+async def verify_user_account(token: str):
+    token_data = decode_url_safe_token(token)
+    user_email = token_data.get("email")
+    if user_email:
+        with Session(engine) as session:
+            stmt = select(User).where(User.tcet_email == user_email)
+            result = session.scalars(stmt).one()
+            if not result:
+                return {"message": "User not found"}, 401
+            result.isEmailVerified = True
+            session.commit()
+            return JSONResponse(
+                content={"message": "Account verified successfully"},
+                status_code=status.HTTP_200_OK,
+            )
+    return JSONResponse(
+        content={"message": "Invalid token"}, status_code=status.HTTP_401_UNAUTHORIZED
+    )
 
 
 @authRouter.post("/login")
