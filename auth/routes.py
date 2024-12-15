@@ -112,7 +112,7 @@ async def password_reset_request(email_data: ForgotPasswordSchema):
 
     token = create_url_safe_token({"email": email})
 
-    link = f"http://localhost:5173/api/auth/password-reset-confirm/{token}"
+    link = f"http://localhost:5173/reset-password/{token}"
 
     html_message = f"""
     <h1>Reset Your Password</h1>

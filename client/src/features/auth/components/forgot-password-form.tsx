@@ -6,6 +6,7 @@ import { ForgotPasswordSchema, ForgotPasswordType } from "@/lib/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const ForgotPasswordForm = () => {
   const form = useForm<ForgotPasswordType>({
@@ -17,7 +18,18 @@ const ForgotPasswordForm = () => {
   const [loading, setLoading] = React.useState(false);
   const onSubmit = async (ForgetPasswordData: ForgotPasswordType) => {
     setLoading(true);
-    console.log(ForgetPasswordData);
+    const res = await fetch("/api/auth/password-reset-request", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email: ForgetPasswordData.email }),
+    });
+    if (res.status !== 200) {
+      toast.error("Failed to send reset password link");
+      return;
+    }
+    toast.success("Reset password link is shared to your email");
     setLoading(false);
   };
   return (

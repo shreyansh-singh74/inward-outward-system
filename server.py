@@ -26,7 +26,14 @@ async def authenticate(access_token: str = Cookie(None)):
             user_response[key] = str(value)
         if isinstance(value, datetime):
             user_response[key] = value.isoformat()
-    return JSONResponse(content={"user": user}, status_code=200)
+    return JSONResponse(
+        content={
+            "email": user_response.get("email"),
+            "id": user_response.get("id"),
+            "username": user_response.get("username"),
+        },
+        status_code=200,
+    )
 
 
 app.include_router(authRouter, prefix="/api/auth")

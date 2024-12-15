@@ -12,7 +12,8 @@ import { LoginSchema, LoginType } from "@/lib/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 const SignInForm = () => {
   const form = useForm<LoginType>({
     resolver: zodResolver(LoginSchema),
@@ -22,8 +23,23 @@ const SignInForm = () => {
     },
   });
   const [loading, setLoading] = React.useState(false);
-  const onSubmit = (values: LoginType) => {
-    console.log(values);
+  const navigate = useNavigate();
+  const onSubmit = async (values: LoginType) => {
+    setLoading(true);
+    const res = await fetch(`/api/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(values),
+    });
+    if (res.status !== 201) {
+      toast.error("Failed to Login");
+    } else {
+      toast.success("Logged in successfully");
+      navigate({ to: "/" });
+    }
+    setLoading(false);
   };
 
   return (

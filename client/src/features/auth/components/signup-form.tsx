@@ -12,7 +12,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
-import { Select } from "@/components/ui/select";
 import SelectFormControl from "@/components/select";
 import { SignupDepartments } from "@/contants";
 import { toast } from "sonner";
