@@ -47,9 +47,11 @@ const items = [
   {
     title: "Logout",
     function: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const res = await fetch("/api/logout", {
         method: "POST",
       });
+      console.log(res);
       router.navigate({ to: "/login" });
     },
     icon: Settings,

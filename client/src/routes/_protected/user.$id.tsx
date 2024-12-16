@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
 import { User } from "@/features/users/component/table";
 import { usersAtom } from "@/lib/atoms";
 import {
@@ -38,6 +37,7 @@ function RouteComponent() {
     name: "role",
   });
   useEffect(() => {
+    //@ts-expect-error: Unreachable code error
     setDepartment(role_and_departments[role]);
   }, [role]);
   if (!users) {

@@ -17,10 +17,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDate } from "@/features/users/component/table";
-import { router } from "@/main";
 import { useAtomValue } from "jotai";
 import { userAtom } from "@/lib/atoms";
 import { AcceptDialog } from "@/components/AcceptDialog";
+import { RejectDialog } from "@/components/RejectDialog";
 interface User {
   id: string;
   name: string;
@@ -78,6 +78,7 @@ function RouteComponent() {
   const user = useAtomValue(userAtom);
   const { id } = useParams({ from: "/_protected/application/$id" });
   const navigate = useNavigate();
+  if (!user) return;
   if (!data) return <div>Loading...</div>;
   if (!data.application) {
     navigate({ to: "/" });
@@ -124,7 +125,13 @@ function RouteComponent() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div>
                 <Label>Username</Label>
-                <Input value={application.created_by.username} readOnly />
+                <Input
+                  value={
+                    // @ts-expect-error: Unreachable code error
+                    application.created_by.username
+                  }
+                  readOnly
+                />
               </div>
               <div>
                 <Label>Role</Label>
@@ -158,7 +165,13 @@ function RouteComponent() {
                   </div>
                   <div>
                     <Label>From User</Label>
-                    <Input value={action.from_user.username} readOnly />
+                    <Input
+                      value={
+                        // @ts-expect-error: Unreachable code error
+                        action.from_user.username
+                      }
+                      readOnly
+                    />
                   </div>
                   <div>
                     <Label>To User</Label>
@@ -167,7 +180,13 @@ function RouteComponent() {
                 </div>
                 <div className="mt-2">
                   <Label>Comments</Label>
-                  <Textarea value={action.comment || "No comments"} readOnly />
+                  <Textarea
+                    value={
+                      // @ts-expect-error: Unreachable code error
+                      action.comment || "No comments"
+                    }
+                    readOnly
+                  />
                 </div>
               </Card>
             ))}
@@ -180,15 +199,17 @@ function RouteComponent() {
         {application.current_handler_id === user?.id && (
           <CardFooter className="flex justify-between flex-col md:flex-row gap-4">
             <AcceptDialog id={id}>
-              <Button className="bg-green-500 hover:bg-green-600 w-full">
+              <Button className="bg-green-500 hover:bg-green-600 w-full md:w-[33%]">
                 Accept
               </Button>
             </AcceptDialog>
-            <Button className="bg-red-500 hover:bg-red-600 w-full">
-              Reject
-            </Button>
+            <RejectDialog id={id}>
+              <Button className="bg-red-500 hover:bg-red-600 w-full md:w-[33%]">
+                Reject
+              </Button>
+            </RejectDialog>
             <Button
-              className="bg-blue-500 hover:bg-blue-600 w-full"
+              className="bg-blue-500 hover:bg-blue-600 w-full md:w-[33%]"
               onClick={() => navigate({ to: `/forward/${application.id}` })}
             >
               Forward

@@ -32,6 +32,7 @@ function RouteComponent() {
     name: "role",
   });
   useEffect(() => {
+    // @ts-expect-error: Unreachable code error
     setDepartment(role_and_departments[role]);
   }, [role]);
   const onSubmit = async (values: createApplicationType) => {
