@@ -13,6 +13,7 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 import { Card, CardContent, CardTitle, CardHeader } from "@/components/ui/card";
 import { CheckCircle, Clock, XCircle } from "lucide-react";
+import { formatDate } from "@/features/users/component/table";
 export type DocumentRecord = {
   created_at: string; // ISO timestamp (e.g., "2024-12-15T11:37:29")
   created_by_id: string; // UUID of the user who created the record
@@ -137,6 +138,9 @@ function RouteComponent() {
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600">{application.description}</p>
+                <p className="text-gray-600">
+                  {formatDate(application.created_at)}
+                </p>
               </CardContent>
             </Card>
           ))}

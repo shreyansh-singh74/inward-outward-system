@@ -7,7 +7,7 @@ from fastapi import APIRouter, Cookie
 import jwt
 from config import JWT_SECRET, JWT_ALGORITHM, engine
 from uuid import UUID
-from db.models import UserRole, Applications, ApplicationActions
+from db.models import UserRole, Applications, ApplicationActions, ApplicationStatus
 from datetime import datetime
 from .schema import (
     CreateApplicationSchema,
@@ -91,44 +91,119 @@ async def createApplication(
     return JSONResponse(content={"message": "Application created"}, status_code=200)
 
 
+from fastapi import APIRouter, Cookie, HTTPException
+from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session, aliased
+from sqlalchemy.future import select
+from uuid import UUID
+from datetime import datetime
+
+application_router = APIRouter()
+
+
 @application_router.get("/{application_id}")
 async def getApplication(application_id: UUID, access_token: str = Cookie(None)):
     user = protectRoute(access_token)
     if not isinstance(user, User):
         return user
+
     with Session(engine) as session:
+        # Create aliases for the User table
+        CreatedByUser = aliased(User, name="created_by")
+        FromUser = aliased(User, name="from_user")
+        ToUser = aliased(User, name="to_user")
+
+        # Query the application along with its actions and related users (created_by, from_user, to_user)
         statement = (
-            select(Applications)
+            select(Applications, ApplicationActions, CreatedByUser, FromUser, ToUser)
+            .outerjoin(
+                ApplicationActions, ApplicationActions.application_id == Applications.id
+            )
+            .outerjoin(CreatedByUser, Applications.created_by_id == CreatedByUser.id)
+            .outerjoin(FromUser, ApplicationActions.from_user_id == FromUser.id)
+            .outerjoin(ToUser, ApplicationActions.to_user_id == ToUser.id)
             .where(Applications.id == application_id)
-            .join(ApplicationActions)
-        ).where(ApplicationActions.application_id == application_id)
-        actions_statement = select(ApplicationActions).where(
-            ApplicationActions.application_id == application_id
         )
-        actions = session.scalars(actions_statement).all()
-        actions_list = [action.__dict__ for action in actions]
-        for action in actions_list:
-            action.pop("_sa_instance_state", None)
-            for key, value in action.items():
-                if isinstance(value, UUID):
-                    action[key] = str(value)
-                if isinstance(value, datetime):
-                    action[key] = value.isoformat()
-        result = session.scalars(statement).first()
-        if not result:
+
+        # Execute the query and group the results by application
+        results = session.execute(statement).all()
+
+        if not results:
             return JSONResponse(
                 content={"message": "Application not found"}, status_code=404
             )
-        application = result.__dict__
-        application.pop("_sa_instance_state", None)
 
-        for key, value in application.items():
-            if isinstance(value, UUID):
-                application[key] = str(value)
-            if isinstance(value, datetime):
-                application[key] = value.isoformat()
-        application["actions"] = actions_list
-        return JSONResponse(content={"application": application}, status_code=200)
+        # Initialize the application data
+        application_data = None
+        actions_list = []
+
+        for row in results:
+            application, action, created_by, from_user, to_user = row
+
+            # Serialize application data (initialize once)
+            if application_data is None:
+                application_data = {
+                    "id": str(application.id),
+                    "status": application.status,
+                    "created_at": (
+                        application.created_at.isoformat()
+                        if application.created_at
+                        else None
+                    ),
+                    "current_handler_id": str(application.current_handler_id),
+                    "document": (
+                        application.document_url if application.document_url else None
+                    ),
+                    "description": (
+                        application.description if application.description else None
+                    ),
+                    "created_by": (
+                        {
+                            "id": str(created_by.id) if created_by else None,
+                            "username": created_by.username if created_by else None,
+                            "role": created_by.role if created_by else None,
+                            "department": created_by.department if created_by else None,
+                        }
+                        if created_by
+                        else None
+                    ),
+                }
+
+            # Serialize action data
+            if action:
+                actions_list.append(
+                    {
+                        "id": str(action.id),
+                        "action_type": action.action_type,
+                        "comment": action.comments,
+                        "created_at": (
+                            action.created_at.isoformat() if action.created_at else None
+                        ),
+                        "from_user": (
+                            {
+                                "id": str(from_user.id) if from_user else None,
+                                "username": from_user.username if from_user else None,
+                            }
+                            if from_user
+                            else None
+                        ),
+                        "to_user": (
+                            {
+                                "id": str(to_user.id) if to_user else None,
+                                "name": to_user.username if to_user else None,
+                            }
+                            if to_user
+                            else None
+                        ),
+                    }
+                )
+
+        # Add actions to the application data
+        if application_data:
+            application_data["actions"] = actions_list
+
+        return JSONResponse(content={"application": application_data}, status_code=200)
+
     return JSONResponse(content={"message": "Application not found"}, status_code=404)
 
 
@@ -152,7 +227,7 @@ async def update(
             return JSONResponse(
                 content={"message": "You dont't have access"}, status_code=401
             )
-        result.status = body.status
+        result.status = ApplicationStatus[body.status]
         newApplicationAction = ApplicationActions(
             from_user_id=user.id,
             to_user_id=result.created_by_id,
@@ -220,7 +295,7 @@ async def ForwardApplication(
                 content={"message": "Receiver not found"}, status_code=404
             )
         result.current_handler_id = receiver.id
-        result.status = "FORWARDED"
+        result.status = ApplicationStatus.FORWARDED
         newApplicationAction = ApplicationActions(
             from_user_id=user.id,
             to_user_id=receiver.id,

@@ -37,9 +37,15 @@ export const createApplicationSchema = zfd.formData({
     })
     .optional(),
 });
+export const forwardApplicationSchema = z.object({
+  role: z.string(),
+  department: z.string(),
+  remark: z.string().min(1, { message: "Remarks is required" }),
+});
 export type LoginType = z.infer<typeof LoginSchema>;
 export type SignUpType = z.infer<typeof SignupSchema>;
 export type ForgotPasswordType = z.infer<typeof ForgotPasswordSchema>;
 export type ResetPasswordType = z.infer<typeof ResetPasswordSchema>;
 export type UpdateUserType = z.infer<typeof UpdateUserSchema>;
 export type createApplicationType = z.infer<typeof createApplicationSchema>;
+export type forwardApplicationType = z.infer<typeof forwardApplicationSchema>;

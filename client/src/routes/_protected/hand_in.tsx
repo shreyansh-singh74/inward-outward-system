@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { DocumentRecord } from ".";
 import { getStatusColor, getStatusIcon } from "./index";
 import { Badge } from "@/components/ui/badge";
+import { formatDate } from "@/features/users/component/table";
 export const Route = createFileRoute("/_protected/hand_in")({
   component: RouteComponent,
 });
@@ -34,6 +35,9 @@ function RouteComponent() {
             </CardHeader>
             <CardContent>
               <p className="text-gray-600">{application.description}</p>
+              <p className="text-gray-600">
+                {formatDate(application.created_at)}
+              </p>
             </CardContent>
           </Card>
         ))}
