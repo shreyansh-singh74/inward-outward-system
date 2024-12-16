@@ -11,15 +11,25 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as ProtectedImport } from './routes/_protected'
 import { Route as AuthImport } from './routes/_auth'
 import { Route as ProtectedIndexImport } from './routes/_protected/index'
+import { Route as ProtectedUsersImport } from './routes/_protected/users'
+import { Route as ProtectedTurninImport } from './routes/_protected/turn_in'
+import { Route as ProtectedHandinImport } from './routes/_protected/hand_in'
 import { Route as AuthSignupImport } from './routes/_auth/signup'
 import { Route as AuthLoginImport } from './routes/_auth/login'
 import { Route as AuthForgotpasswordrequestImport } from './routes/_auth/forgot_password_request'
+import { Route as ProtectedUserIdImport } from './routes/_protected/user.$id'
 import { Route as AuthVerifyTokenImport } from './routes/_auth/verify.$token'
 import { Route as AuthResetPasswordTokenImport } from './routes/_auth/reset-password.$token'
 
 // Create/Update Routes
+
+const ProtectedRoute = ProtectedImport.update({
+  id: '/_protected',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const AuthRoute = AuthImport.update({
   id: '/_auth',
@@ -27,9 +37,27 @@ const AuthRoute = AuthImport.update({
 } as any)
 
 const ProtectedIndexRoute = ProtectedIndexImport.update({
-  id: '/_protected/',
+  id: '/',
   path: '/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => ProtectedRoute,
+} as any)
+
+const ProtectedUsersRoute = ProtectedUsersImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+
+const ProtectedTurninRoute = ProtectedTurninImport.update({
+  id: '/turn_in',
+  path: '/turn_in',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+
+const ProtectedHandinRoute = ProtectedHandinImport.update({
+  id: '/hand_in',
+  path: '/hand_in',
+  getParentRoute: () => ProtectedRoute,
 } as any)
 
 const AuthSignupRoute = AuthSignupImport.update({
@@ -48,6 +76,12 @@ const AuthForgotpasswordrequestRoute = AuthForgotpasswordrequestImport.update({
   id: '/forgot_password_request',
   path: '/forgot_password_request',
   getParentRoute: () => AuthRoute,
+} as any)
+
+const ProtectedUserIdRoute = ProtectedUserIdImport.update({
+  id: '/user/$id',
+  path: '/user/$id',
+  getParentRoute: () => ProtectedRoute,
 } as any)
 
 const AuthVerifyTokenRoute = AuthVerifyTokenImport.update({
@@ -73,6 +107,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthImport
       parentRoute: typeof rootRoute
     }
+    '/_protected': {
+      id: '/_protected'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof ProtectedImport
+      parentRoute: typeof rootRoute
+    }
     '/_auth/forgot_password_request': {
       id: '/_auth/forgot_password_request'
       path: '/forgot_password_request'
@@ -94,12 +135,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSignupImport
       parentRoute: typeof AuthImport
     }
+    '/_protected/hand_in': {
+      id: '/_protected/hand_in'
+      path: '/hand_in'
+      fullPath: '/hand_in'
+      preLoaderRoute: typeof ProtectedHandinImport
+      parentRoute: typeof ProtectedImport
+    }
+    '/_protected/turn_in': {
+      id: '/_protected/turn_in'
+      path: '/turn_in'
+      fullPath: '/turn_in'
+      preLoaderRoute: typeof ProtectedTurninImport
+      parentRoute: typeof ProtectedImport
+    }
+    '/_protected/users': {
+      id: '/_protected/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof ProtectedUsersImport
+      parentRoute: typeof ProtectedImport
+    }
     '/_protected/': {
       id: '/_protected/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof ProtectedIndexImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof ProtectedImport
     }
     '/_auth/reset-password/$token': {
       id: '/_auth/reset-password/$token'
@@ -114,6 +176,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/verify/$token'
       preLoaderRoute: typeof AuthVerifyTokenImport
       parentRoute: typeof AuthImport
+    }
+    '/_protected/user/$id': {
+      id: '/_protected/user/$id'
+      path: '/user/$id'
+      fullPath: '/user/$id'
+      preLoaderRoute: typeof ProtectedUserIdImport
+      parentRoute: typeof ProtectedImport
     }
   }
 }
@@ -138,14 +207,38 @@ const AuthRouteChildren: AuthRouteChildren = {
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
+interface ProtectedRouteChildren {
+  ProtectedHandinRoute: typeof ProtectedHandinRoute
+  ProtectedTurninRoute: typeof ProtectedTurninRoute
+  ProtectedUsersRoute: typeof ProtectedUsersRoute
+  ProtectedIndexRoute: typeof ProtectedIndexRoute
+  ProtectedUserIdRoute: typeof ProtectedUserIdRoute
+}
+
+const ProtectedRouteChildren: ProtectedRouteChildren = {
+  ProtectedHandinRoute: ProtectedHandinRoute,
+  ProtectedTurninRoute: ProtectedTurninRoute,
+  ProtectedUsersRoute: ProtectedUsersRoute,
+  ProtectedIndexRoute: ProtectedIndexRoute,
+  ProtectedUserIdRoute: ProtectedUserIdRoute,
+}
+
+const ProtectedRouteWithChildren = ProtectedRoute._addFileChildren(
+  ProtectedRouteChildren,
+)
+
 export interface FileRoutesByFullPath {
-  '': typeof AuthRouteWithChildren
+  '': typeof ProtectedRouteWithChildren
   '/forgot_password_request': typeof AuthForgotpasswordrequestRoute
   '/login': typeof AuthLoginRoute
   '/signup': typeof AuthSignupRoute
+  '/hand_in': typeof ProtectedHandinRoute
+  '/turn_in': typeof ProtectedTurninRoute
+  '/users': typeof ProtectedUsersRoute
   '/': typeof ProtectedIndexRoute
   '/reset-password/$token': typeof AuthResetPasswordTokenRoute
   '/verify/$token': typeof AuthVerifyTokenRoute
+  '/user/$id': typeof ProtectedUserIdRoute
 }
 
 export interface FileRoutesByTo {
@@ -153,20 +246,29 @@ export interface FileRoutesByTo {
   '/forgot_password_request': typeof AuthForgotpasswordrequestRoute
   '/login': typeof AuthLoginRoute
   '/signup': typeof AuthSignupRoute
+  '/hand_in': typeof ProtectedHandinRoute
+  '/turn_in': typeof ProtectedTurninRoute
+  '/users': typeof ProtectedUsersRoute
   '/': typeof ProtectedIndexRoute
   '/reset-password/$token': typeof AuthResetPasswordTokenRoute
   '/verify/$token': typeof AuthVerifyTokenRoute
+  '/user/$id': typeof ProtectedUserIdRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/_auth': typeof AuthRouteWithChildren
+  '/_protected': typeof ProtectedRouteWithChildren
   '/_auth/forgot_password_request': typeof AuthForgotpasswordrequestRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/signup': typeof AuthSignupRoute
+  '/_protected/hand_in': typeof ProtectedHandinRoute
+  '/_protected/turn_in': typeof ProtectedTurninRoute
+  '/_protected/users': typeof ProtectedUsersRoute
   '/_protected/': typeof ProtectedIndexRoute
   '/_auth/reset-password/$token': typeof AuthResetPasswordTokenRoute
   '/_auth/verify/$token': typeof AuthVerifyTokenRoute
+  '/_protected/user/$id': typeof ProtectedUserIdRoute
 }
 
 export interface FileRouteTypes {
@@ -176,38 +278,51 @@ export interface FileRouteTypes {
     | '/forgot_password_request'
     | '/login'
     | '/signup'
+    | '/hand_in'
+    | '/turn_in'
+    | '/users'
     | '/'
     | '/reset-password/$token'
     | '/verify/$token'
+    | '/user/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | ''
     | '/forgot_password_request'
     | '/login'
     | '/signup'
+    | '/hand_in'
+    | '/turn_in'
+    | '/users'
     | '/'
     | '/reset-password/$token'
     | '/verify/$token'
+    | '/user/$id'
   id:
     | '__root__'
     | '/_auth'
+    | '/_protected'
     | '/_auth/forgot_password_request'
     | '/_auth/login'
     | '/_auth/signup'
+    | '/_protected/hand_in'
+    | '/_protected/turn_in'
+    | '/_protected/users'
     | '/_protected/'
     | '/_auth/reset-password/$token'
     | '/_auth/verify/$token'
+    | '/_protected/user/$id'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
-  ProtectedIndexRoute: typeof ProtectedIndexRoute
+  ProtectedRoute: typeof ProtectedRouteWithChildren
 }
 
 const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
-  ProtectedIndexRoute: ProtectedIndexRoute,
+  ProtectedRoute: ProtectedRouteWithChildren,
 }
 
 export const routeTree = rootRoute
@@ -221,7 +336,7 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/_auth",
-        "/_protected/"
+        "/_protected"
       ]
     },
     "/_auth": {
@@ -232,6 +347,16 @@ export const routeTree = rootRoute
         "/_auth/signup",
         "/_auth/reset-password/$token",
         "/_auth/verify/$token"
+      ]
+    },
+    "/_protected": {
+      "filePath": "_protected.tsx",
+      "children": [
+        "/_protected/hand_in",
+        "/_protected/turn_in",
+        "/_protected/users",
+        "/_protected/",
+        "/_protected/user/$id"
       ]
     },
     "/_auth/forgot_password_request": {
@@ -246,8 +371,21 @@ export const routeTree = rootRoute
       "filePath": "_auth/signup.tsx",
       "parent": "/_auth"
     },
+    "/_protected/hand_in": {
+      "filePath": "_protected/hand_in.tsx",
+      "parent": "/_protected"
+    },
+    "/_protected/turn_in": {
+      "filePath": "_protected/turn_in.tsx",
+      "parent": "/_protected"
+    },
+    "/_protected/users": {
+      "filePath": "_protected/users.tsx",
+      "parent": "/_protected"
+    },
     "/_protected/": {
-      "filePath": "_protected/index.tsx"
+      "filePath": "_protected/index.tsx",
+      "parent": "/_protected"
     },
     "/_auth/reset-password/$token": {
       "filePath": "_auth/reset-password.$token.tsx",
@@ -256,6 +394,10 @@ export const routeTree = rootRoute
     "/_auth/verify/$token": {
       "filePath": "_auth/verify.$token.tsx",
       "parent": "/_auth"
+    },
+    "/_protected/user/$id": {
+      "filePath": "_protected/user.$id.tsx",
+      "parent": "/_protected"
     }
   }
 }

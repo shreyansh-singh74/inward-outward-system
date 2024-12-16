@@ -21,7 +21,12 @@ export const ResetPasswordSchema = z.object({
     .min(6, { message: "Minimum length of password should be 6" }),
   confirmPassword: z.string().min(1, { message: "Confirm password required" }),
 });
+export const UpdateUserSchema = z.object({
+  role: z.string(),
+  department: z.string(),
+});
 export type LoginType = z.infer<typeof LoginSchema>;
 export type SignUpType = z.infer<typeof SignupSchema>;
 export type ForgotPasswordType = z.infer<typeof ForgotPasswordSchema>;
 export type ResetPasswordType = z.infer<typeof ResetPasswordSchema>;
+export type UpdateUserType = z.infer<typeof UpdateUserSchema>;
