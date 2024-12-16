@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { zfd } from "zod-form-data";
 export const SignupSchema = z.object({
   name: z.string().min(1, { message: "Username is required" }),
   department: z.string().optional(),
@@ -25,8 +26,20 @@ export const UpdateUserSchema = z.object({
   role: z.string(),
   department: z.string(),
 });
+export const createApplicationSchema = zfd.formData({
+  description: z.string().min(1, { message: "Description is required" }),
+  role: z.string(),
+  department: z.string(),
+  document: zfd
+    .file()
+    .refine((file) => file.size < 1024 * 1024 * 2, {
+      message: "File must be less than 2 MB",
+    })
+    .optional(),
+});
 export type LoginType = z.infer<typeof LoginSchema>;
 export type SignUpType = z.infer<typeof SignupSchema>;
 export type ForgotPasswordType = z.infer<typeof ForgotPasswordSchema>;
 export type ResetPasswordType = z.infer<typeof ResetPasswordSchema>;
 export type UpdateUserType = z.infer<typeof UpdateUserSchema>;
+export type createApplicationType = z.infer<typeof createApplicationSchema>;
