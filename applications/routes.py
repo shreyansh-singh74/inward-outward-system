@@ -165,13 +165,14 @@ async def update(
     return JSONResponse(content={"message": "Application updated"}, status_code=200)
 
 
-@application_router.get("/")
+@application_router.post("/all")
 async def getAllApplications(
     access_token: str = Cookie(None),
 ):
     user = protectRoute(access_token)
     if not isinstance(user, User):
         return user
+    print("here")
     with Session(engine) as session:
         applications = select(Applications).where(
             (Applications.created_by_id == user.id)
@@ -186,6 +187,7 @@ async def getAllApplications(
                 r[key] = str(value)
             if isinstance(value, datetime):
                 r[key] = value.isoformat()
+    print(ans)
     return JSONResponse(content={"applications": ans}, status_code=200)
 
 

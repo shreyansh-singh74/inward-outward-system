@@ -21,6 +21,7 @@ import { Route as AuthSignupImport } from './routes/_auth/signup'
 import { Route as AuthLoginImport } from './routes/_auth/login'
 import { Route as AuthForgotpasswordrequestImport } from './routes/_auth/forgot_password_request'
 import { Route as ProtectedUserIdImport } from './routes/_protected/user.$id'
+import { Route as ProtectedApplicationIdImport } from './routes/_protected/application.$id'
 import { Route as AuthVerifyTokenImport } from './routes/_auth/verify.$token'
 import { Route as AuthResetPasswordTokenImport } from './routes/_auth/reset-password.$token'
 
@@ -81,6 +82,12 @@ const AuthForgotpasswordrequestRoute = AuthForgotpasswordrequestImport.update({
 const ProtectedUserIdRoute = ProtectedUserIdImport.update({
   id: '/user/$id',
   path: '/user/$id',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+
+const ProtectedApplicationIdRoute = ProtectedApplicationIdImport.update({
+  id: '/application/$id',
+  path: '/application/$id',
   getParentRoute: () => ProtectedRoute,
 } as any)
 
@@ -177,6 +184,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthVerifyTokenImport
       parentRoute: typeof AuthImport
     }
+    '/_protected/application/$id': {
+      id: '/_protected/application/$id'
+      path: '/application/$id'
+      fullPath: '/application/$id'
+      preLoaderRoute: typeof ProtectedApplicationIdImport
+      parentRoute: typeof ProtectedImport
+    }
     '/_protected/user/$id': {
       id: '/_protected/user/$id'
       path: '/user/$id'
@@ -212,6 +226,7 @@ interface ProtectedRouteChildren {
   ProtectedTurninRoute: typeof ProtectedTurninRoute
   ProtectedUsersRoute: typeof ProtectedUsersRoute
   ProtectedIndexRoute: typeof ProtectedIndexRoute
+  ProtectedApplicationIdRoute: typeof ProtectedApplicationIdRoute
   ProtectedUserIdRoute: typeof ProtectedUserIdRoute
 }
 
@@ -220,6 +235,7 @@ const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedTurninRoute: ProtectedTurninRoute,
   ProtectedUsersRoute: ProtectedUsersRoute,
   ProtectedIndexRoute: ProtectedIndexRoute,
+  ProtectedApplicationIdRoute: ProtectedApplicationIdRoute,
   ProtectedUserIdRoute: ProtectedUserIdRoute,
 }
 
@@ -238,6 +254,7 @@ export interface FileRoutesByFullPath {
   '/': typeof ProtectedIndexRoute
   '/reset-password/$token': typeof AuthResetPasswordTokenRoute
   '/verify/$token': typeof AuthVerifyTokenRoute
+  '/application/$id': typeof ProtectedApplicationIdRoute
   '/user/$id': typeof ProtectedUserIdRoute
 }
 
@@ -252,6 +269,7 @@ export interface FileRoutesByTo {
   '/': typeof ProtectedIndexRoute
   '/reset-password/$token': typeof AuthResetPasswordTokenRoute
   '/verify/$token': typeof AuthVerifyTokenRoute
+  '/application/$id': typeof ProtectedApplicationIdRoute
   '/user/$id': typeof ProtectedUserIdRoute
 }
 
@@ -268,6 +286,7 @@ export interface FileRoutesById {
   '/_protected/': typeof ProtectedIndexRoute
   '/_auth/reset-password/$token': typeof AuthResetPasswordTokenRoute
   '/_auth/verify/$token': typeof AuthVerifyTokenRoute
+  '/_protected/application/$id': typeof ProtectedApplicationIdRoute
   '/_protected/user/$id': typeof ProtectedUserIdRoute
 }
 
@@ -284,6 +303,7 @@ export interface FileRouteTypes {
     | '/'
     | '/reset-password/$token'
     | '/verify/$token'
+    | '/application/$id'
     | '/user/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -297,6 +317,7 @@ export interface FileRouteTypes {
     | '/'
     | '/reset-password/$token'
     | '/verify/$token'
+    | '/application/$id'
     | '/user/$id'
   id:
     | '__root__'
@@ -311,6 +332,7 @@ export interface FileRouteTypes {
     | '/_protected/'
     | '/_auth/reset-password/$token'
     | '/_auth/verify/$token'
+    | '/_protected/application/$id'
     | '/_protected/user/$id'
   fileRoutesById: FileRoutesById
 }
@@ -356,6 +378,7 @@ export const routeTree = rootRoute
         "/_protected/turn_in",
         "/_protected/users",
         "/_protected/",
+        "/_protected/application/$id",
         "/_protected/user/$id"
       ]
     },
@@ -394,6 +417,10 @@ export const routeTree = rootRoute
     "/_auth/verify/$token": {
       "filePath": "_auth/verify.$token.tsx",
       "parent": "/_auth"
+    },
+    "/_protected/application/$id": {
+      "filePath": "_protected/application.$id.tsx",
+      "parent": "/_protected"
     },
     "/_protected/user/$id": {
       "filePath": "_protected/user.$id.tsx",
