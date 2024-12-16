@@ -2,6 +2,7 @@ import {
   createFileRoute,
   useLoaderData,
   useNavigate,
+  useParams,
 } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
@@ -19,6 +20,7 @@ import { formatDate } from "@/features/users/component/table";
 import { router } from "@/main";
 import { useAtomValue } from "jotai";
 import { userAtom } from "@/lib/atoms";
+import { AcceptDialog } from "@/components/AcceptDialog";
 interface User {
   id: string;
   name: string;
@@ -74,6 +76,7 @@ export const Route = createFileRoute("/_protected/application/$id")({
 function RouteComponent() {
   const data = useLoaderData({ from: "/_protected/application/$id" });
   const user = useAtomValue(userAtom);
+  const { id } = useParams({ from: "/_protected/application/$id" });
   const navigate = useNavigate();
   if (!data) return <div>Loading...</div>;
   if (!data.application) {
@@ -176,9 +179,11 @@ function RouteComponent() {
         {/* Action Buttons */}
         {application.current_handler_id === user?.id && (
           <CardFooter className="flex justify-between flex-col md:flex-row gap-4">
-            <Button className="bg-green-500 hover:bg-green-600 w-full">
-              Accept
-            </Button>
+            <AcceptDialog id={id}>
+              <Button className="bg-green-500 hover:bg-green-600 w-full">
+                Accept
+              </Button>
+            </AcceptDialog>
             <Button className="bg-red-500 hover:bg-red-600 w-full">
               Reject
             </Button>
