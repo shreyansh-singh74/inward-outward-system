@@ -21,6 +21,7 @@ import { useAtomValue } from "jotai";
 import { userAtom } from "@/lib/atoms";
 import { AcceptDialog } from "@/components/AcceptDialog";
 import { RejectDialog } from "@/components/RejectDialog";
+import { ExternalLink } from "lucide-react";
 interface User {
   id: string;
   name: string;
@@ -50,7 +51,7 @@ interface Application {
   created_by: User;
   current_handler_id: string;
   description: string;
-  document_url: string | null;
+  document: string | null;
   status: string;
   actions: ApplicationAction[];
 }
@@ -86,6 +87,12 @@ function RouteComponent() {
   }
   const { application } = data as ApplicationDetailsProps;
   console.log(application);
+  const document_name = application.document?.split("/")[1];
+  const handleClick = () => {
+    const url = `http://localhost:5173/api/documents/${document_name}`;
+    window.open(url, "_blank");
+  };
+
   return (
     <div className="w-[100dvw] lg:w-[80dvw]">
       <Card className="w-full max-w-4xl mx-auto">
@@ -107,10 +114,16 @@ function RouteComponent() {
               </div>
               <div>
                 <Label>Document URL</Label>
-                <Input
-                  value={application.document_url || "No document"}
-                  readOnly
-                />
+                <div className="flex items-center gap-1">
+                  <Input value={document_name || "No document"} readOnly />
+                  <Button
+                    variant={"secondary"}
+                    className="bg-[#d17a00] text-white hover:bg-[#d17a00]"
+                    onClick={handleClick}
+                  >
+                    <ExternalLink />
+                  </Button>
+                </div>
               </div>
             </div>
             <div>

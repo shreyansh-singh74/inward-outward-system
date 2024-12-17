@@ -1,5 +1,6 @@
-from fastapi import FastAPI, Cookie, Response
+from fastapi import FastAPI, Cookie, HTTPException
 from auth.routes import authRouter
+from fastapi.responses import FileResponse
 from config import engine
 from db.models import Base, User
 from sys_admin.routes import sys_admin_router
@@ -7,6 +8,7 @@ from applications.routes import application_router, protectRoute
 from fastapi.responses import JSONResponse
 from datetime import datetime
 from uuid import UUID
+import os
 
 app = FastAPI()
 
@@ -48,6 +50,19 @@ def logout(access_token: str = Cookie(None)):
     response = JSONResponse(content={"message": "account logged out successfully"})
     response.delete_cookie(key="access_token")
     return response
+
+
+MEDIA_DIR = "media"
+
+
+@app.get("/api/documents/{filename}")
+async def get_document(filename: str):
+    file_path = os.path.join(MEDIA_DIR, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(
+        file_path, media_type="application/octet-stream", filename=filename
+    )
 
 
 app.include_router(authRouter, prefix="/api/auth")

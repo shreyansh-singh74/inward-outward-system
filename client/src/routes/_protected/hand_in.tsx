@@ -1,18 +1,43 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useAtomValue } from "jotai";
-import { turn_in_applicationAtom } from "@/lib/atoms";
+import { useAtomValue, useSetAtom } from "jotai";
+import { turn_in_applicationAtom, userAtom } from "@/lib/atoms";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { DocumentRecord } from ".";
 import { getStatusColor, getStatusIcon } from "./index";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/features/users/component/table";
+import { toast } from "sonner";
+import { useLoaderData } from "@tanstack/react-router";
+import { useEffect } from "react";
 export const Route = createFileRoute("/_protected/hand_in")({
   component: RouteComponent,
+  loader: async () => {
+    const res = await fetch("/api/application/all", {
+      method: "POST",
+    });
+    if (res.status !== 200) {
+      toast.error("Failed to load application");
+    }
+    return (await res.json()).applications;
+  },
 });
 
 function RouteComponent() {
   const turnInApplications = useAtomValue(turn_in_applicationAtom);
   const navigate = useNavigate();
+  const data = useLoaderData({ from: "/_protected/hand_in" });
+  const userData = useAtomValue(userAtom);
+  const setTurnInApplications = useSetAtom(turn_in_applicationAtom);
+  useEffect(() => {
+    const turnInApplications =
+      data.length > 0
+        ? data.filter(
+            (document: DocumentRecord) =>
+              document.current_handler_id === userData?.id
+          )
+        : null;
+    setTurnInApplications(turnInApplications);
+  }, [data, userData]);
   return (
     <div className="w-[100dvw] lg:w-[80dvw]">
       <h1 className="text-xl font-bold text-center mb-3">

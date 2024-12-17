@@ -7,15 +7,21 @@ from fastapi import APIRouter, Cookie
 import jwt
 from config import JWT_SECRET, JWT_ALGORITHM, engine
 from uuid import UUID
-from db.models import UserRole, Applications, ApplicationActions, ApplicationStatus
+from db.models import Applications, ApplicationActions, ApplicationStatus
 from datetime import datetime
 from .schema import (
-    CreateApplicationSchema,
     UpdateApplicationSchema,
     ForwardApplicationSchema,
 )
 from uuid import uuid4
 from typing import Annotated
+
+from fastapi import APIRouter, Cookie, HTTPException
+from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session, aliased
+from sqlalchemy.future import select
+from uuid import UUID
+from datetime import datetime
 
 application_router = APIRouter()
 
@@ -91,16 +97,6 @@ async def createApplication(
     return JSONResponse(content={"message": "Application created"}, status_code=200)
 
 
-from fastapi import APIRouter, Cookie, HTTPException
-from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session, aliased
-from sqlalchemy.future import select
-from uuid import UUID
-from datetime import datetime
-
-application_router = APIRouter()
-
-
 @application_router.get("/{application_id}")
 async def getApplication(application_id: UUID, access_token: str = Cookie(None)):
     user = protectRoute(access_token)
@@ -163,6 +159,7 @@ async def getApplication(application_id: UUID, access_token: str = Cookie(None))
                             "username": created_by.username if created_by else None,
                             "role": created_by.role if created_by else None,
                             "department": created_by.department if created_by else None,
+                            "tcet_email": created_by.tcet_email if created_by else None,
                         }
                         if created_by
                         else None
