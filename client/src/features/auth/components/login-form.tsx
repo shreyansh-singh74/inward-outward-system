@@ -33,7 +33,7 @@ const SignInForm = () => {
       },
       body: JSON.stringify(values),
     });
-    if (res.status !== 201) {
+    if (res.status !== 200) {
       toast.error("Failed to Login");
     } else {
       toast.success("Logged in successfully");

@@ -2,6 +2,7 @@ import {
   createRootRoute,
   Outlet,
   useLoaderData,
+  useLocation,
   useNavigate,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
@@ -19,12 +20,15 @@ export const Route = createRootRoute({
     const data = useLoaderData({ from: "__root__" });
     console.log(data);
     const setAtom = useSetAtom(userAtom);
+    const location = useLocation();
     const navigate = useNavigate();
     useEffect(() => {
       if (data.error && data.error === "user is not authenticated") {
-        navigate({
-          to: "/login",
-        });
+        if (location.pathname === "/") {
+          navigate({
+            to: "/login",
+          });
+        }
       } else {
         setAtom(data);
       }

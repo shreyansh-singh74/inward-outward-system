@@ -15,14 +15,17 @@ from .schema import (
 )
 from uuid import uuid4
 from typing import Annotated
-
+from mail import create_message
 from fastapi import APIRouter, Cookie, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session, aliased
 from sqlalchemy.future import select
 from uuid import UUID
 from datetime import datetime
+from dotenv import load_dotenv
+import os
 
+load_dotenv()
 application_router = APIRouter()
 
 
@@ -50,7 +53,7 @@ def protectRoute(access_token: str):
 
 @application_router.post("/create")
 async def createApplication(
-    document: UploadFile,
+    document: UploadFile = File(None),
     description: str = Form(...),
     role: str = Form(...),
     department: str = Form(...),
@@ -68,22 +71,24 @@ async def createApplication(
         with open(document_url, "wb") as f:
             content = await document.read()
             f.write(content)
-
+    receiver_email = None
     with Session(engine) as session:
         statement = select(User).where(
             User.role == role and User.department == department
         )
         receiver = session.scalars(statement).first()
+        receiver_email = receiver.tcet_email
         if not receiver:
             return JSONResponse(
                 content={"message": "Receiver not found"}, status_code=404
             )
+        application_id = uuid4()
         newApplication = Applications(
             description=description,
             document_url=document_url,
             created_by_id=user.id,
             current_handler_id=receiver.id,
-            id=uuid4(),
+            id=application_id,
         )
         newApplicationAction = ApplicationActions(
             from_user_id=user.id,
@@ -94,6 +99,14 @@ async def createApplication(
         session.add(newApplication)
         session.add(newApplicationAction)
         session.commit()
+        link = f"http://{os.getenv("CLIENT_URL")}/application/{application_id}"
+        html_message = f"""
+        <h1>Application is Inwarded</h1>
+        <p>Click here to see application <a href="{link}">link</a></p>
+        """
+        subject = "please check this application"
+        if receiver_email:
+            await create_message([receiver.tcet_email], subject, html_message)
     return JSONResponse(content={"message": "Application created"}, status_code=200)
 
 
@@ -180,6 +193,10 @@ async def getApplication(application_id: UUID, access_token: str = Cookie(None))
                             {
                                 "id": str(from_user.id) if from_user else None,
                                 "username": from_user.username if from_user else None,
+                                "role": from_user.role if from_user else None,
+                                "department": (
+                                    from_user.department if from_user else None
+                                ),
                             }
                             if from_user
                             else None
@@ -188,6 +205,8 @@ async def getApplication(application_id: UUID, access_token: str = Cookie(None))
                             {
                                 "id": str(to_user.id) if to_user else None,
                                 "name": to_user.username if to_user else None,
+                                "role": to_user.role if to_user else None,
+                                "department": to_user.department if to_user else None,
                             }
                             if to_user
                             else None
@@ -224,6 +243,7 @@ async def update(
             return JSONResponse(
                 content={"message": "You dont't have access"}, status_code=401
             )
+        result.accept_reference_number = body.referenceNumber
         result.status = ApplicationStatus[body.status]
         newApplicationAction = ApplicationActions(
             from_user_id=user.id,
@@ -232,8 +252,32 @@ async def update(
             action_type=body.status,
             comments=body.remark,
         )
+        statement = select(User).where(User.id == result.created_by_id)
+        creator = session.scalars(statement).first()
+        if creator is None:
+            return JSONResponse(
+                content={"message": "Some error taken place"}, status_code=401
+            )
         session.add(newApplicationAction)
         session.commit()
+        html_message = None
+        if body.status == "ACCEPTED":
+            if body.referenceNumber:
+                html_message = f"""
+                <h1>Application is Accepted</h1>
+                <p>This is your reference Number {body.referenceNumber}</p>
+                """
+            else:
+                html_message = f"""
+                <h1>Application is Accepted</h1>
+                """
+        else:
+            html_message = f"""
+                <h1>Application is Rejected</h1>
+                """
+        subject = "please check this application"
+        if result:
+            await create_message([creator.tcet_email], subject, html_message)
     return JSONResponse(content={"message": "Application updated"}, status_code=200)
 
 
@@ -244,7 +288,6 @@ async def getAllApplications(
     user = protectRoute(access_token)
     if not isinstance(user, User):
         return user
-    print("here")
     with Session(engine) as session:
         applications = select(Applications).where(
             (Applications.created_by_id == user.id)
@@ -302,4 +345,12 @@ async def ForwardApplication(
         )
         session.add(newApplicationAction)
         session.commit()
+        link = f"http://{os.getenv("CLIENT_URL")}/application/{application_id}"
+        html_message = f"""
+        <h1>Application is Forwarded</h1>
+        <p>Click here to see application <a href="{link}">link</a></p>
+        """
+        subject = "please check this application"
+        if receiver.tcet_email:
+            await create_message([receiver.tcet_email], subject, html_message)
     return JSONResponse(content={"message": "Application forwarded"}, status_code=200)

@@ -16,6 +16,10 @@ from .utils import create_url_safe_token, decode_url_safe_token
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import HTTPException
 from db.models import UserRole
+from dotenv import load_dotenv
+
+load_dotenv()
+import os
 
 authRouter = APIRouter()
 
@@ -40,7 +44,7 @@ async def signup(user: SignUpSchema):
         session.add(newUser)
         session.commit()
     token = create_url_safe_token({"email": user.email})
-    link = f"http://localhost:5173/verify/{token}"
+    link = f"http://{os.getenv("CLIENT_URL")}/verify/{token}"
 
     html = f"""
     <h1>Verify your Email</h1>
@@ -88,13 +92,13 @@ async def login(body: LoginSchema, response: Response):
     if not verifyPassword:
         return JSONResponse(content={"message": "Invalid Credentials"}, status_code=401)
     if not results.isEmailVerified:
-        return {"message": "Email not verified"}, 401
+        return JSONResponse({"message": "Email not verified"}, 401)
     access_token = create_access_token(
         data={"sub": str(results.id)},
     )
     response = JSONResponse(
         content={"access_token": access_token, "token_type": "bearer"},
-        status_code=201,
+        status_code=200,
     )
     response.set_cookie(
         key="access_token",
@@ -112,7 +116,7 @@ async def password_reset_request(email_data: ForgotPasswordSchema):
 
     token = create_url_safe_token({"email": email})
 
-    link = f"http://localhost:5173/reset-password/{token}"
+    link = f"http://{os.getenv("CLIENT_URL")}/reset-password/{token}"
 
     html_message = f"""
     <h1>Reset Your Password</h1>

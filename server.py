@@ -12,6 +12,8 @@ import os
 
 app = FastAPI()
 
+Base.metadata.create_all(bind=engine)
+
 
 @app.get("/api/authenticate")
 async def authenticate(access_token: str = Cookie(None)):

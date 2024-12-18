@@ -11,6 +11,7 @@ class CreateApplicationSchema(BaseModel):
 class UpdateApplicationSchema(BaseModel):
     status: str
     remark: Optional[str]
+    referenceNumber: Optional[str]
 
 
 class ForwardApplicationSchema(BaseModel):

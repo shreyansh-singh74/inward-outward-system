@@ -7,7 +7,9 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_auth/verify/$token")({
   loader: async ({ params }) => {
-    const res = await fetch(`/api/auth/verify/${params.token}`);
+    const res = await fetch(`/api/auth/verify/${params.token}`, {
+      method: "POST",
+    });
     if (res.status !== 200) {
       toast.error("Failed to verify your account");
     }

@@ -176,7 +176,7 @@ function RouteComponent() {
                     <Label>Created At</Label>
                     <Input value={formatDate(action.created_at)} readOnly />
                   </div>
-                  <div>
+                  <div className="flex gap-3 flex-col">
                     <Label>From User</Label>
                     <Input
                       value={
@@ -185,10 +185,14 @@ function RouteComponent() {
                       }
                       readOnly
                     />
+                    <Input value={action.from_user.role} readOnly />
+                    <Input value={action.from_user.department} readOnly />
                   </div>
-                  <div>
+                  <div className="flex gap-3 flex-col">
                     <Label>To User</Label>
                     <Input value={action.to_user.name} readOnly />
+                    <Input value={action.to_user.role} readOnly />
+                    <Input value={action.to_user.department} readOnly />
                   </div>
                 </div>
                 <div className="mt-2">

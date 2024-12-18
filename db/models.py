@@ -95,6 +95,9 @@ class Applications(Base):
     created_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(timezone.utc)
     )
+    accept_reference_number: Mapped[Optional[str]] = mapped_column(
+        String(200), default=None
+    )
 
 
 class ApplicationActions(Base):

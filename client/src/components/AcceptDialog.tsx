@@ -9,7 +9,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useState } from "react";
 import { toast } from "sonner";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 
 export function AcceptDialog({
   children,
@@ -18,6 +21,8 @@ export function AcceptDialog({
   children: React.ReactNode;
   id: string;
 }) {
+  const [referenceNumber, setReferenceNumber] = useState("");
+  const [message, setMessage] = useState("");
   const onClick = async () => {
     const res = await fetch(`/api/application/update/${id}`, {
       method: "POST",
@@ -26,7 +31,8 @@ export function AcceptDialog({
       },
       body: JSON.stringify({
         status: "ACCEPTED",
-        remark: "Your application is accepted",
+        remark: message,
+        referenceNumber,
       }),
     });
     if (res.status !== 200) {
@@ -42,7 +48,16 @@ export function AcceptDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to accepts this application
+            <Label>Message</Label>
+            <Input
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+            />
+            <Label>Reference Number</Label>
+            <Input
+              value={referenceNumber}
+              onChange={(e) => setReferenceNumber(e.target.value)}
+            />
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
