@@ -159,6 +159,7 @@ async def getApplication(application_id: UUID, access_token: str = Cookie(None))
                         if application.created_at
                         else None
                     ),
+                    "accept_reference_number": (application.accept_reference_number),
                     "current_handler_id": str(application.current_handler_id),
                     "document": (
                         application.document_url if application.document_url else None

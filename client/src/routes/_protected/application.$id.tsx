@@ -54,6 +54,7 @@ interface Application {
   document: string | null;
   status: string;
   actions: ApplicationAction[];
+  accept_reference_number?: string;
 }
 
 interface ApplicationDetailsProps {
@@ -158,6 +159,12 @@ function RouteComponent() {
                 <Label>Email</Label>
                 <Input value={application.created_by.tcet_email} readOnly />
               </div>
+              {application.accept_reference_number && (
+                <div>
+                  <Label>Reference Number</Label>
+                  <Input value={application.accept_reference_number} readOnly />
+                </div>
+              )}
             </div>
           </section>
 

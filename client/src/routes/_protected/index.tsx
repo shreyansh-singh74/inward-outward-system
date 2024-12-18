@@ -21,7 +21,8 @@ export type DocumentRecord = {
   description: string; // A description of the record
   document_url: string; // URL to the document
   id: string; // UUID of the record
-  status: "forwarded" | "pending" | "accepted" | "rejected"; // Status (use union type if statuses are predefined)
+  status: "forwarded" | "pending" | "accepted" | "rejected";
+  accept_reference_number: string; // Status (use union type if statuses are predefined)
 };
 import { Badge } from "@/components/ui/badge";
 export const Route = createFileRoute("/_protected/")({

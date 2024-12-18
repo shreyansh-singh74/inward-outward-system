@@ -9,6 +9,8 @@ import { formatDate } from "@/features/users/component/table";
 import { toast } from "sonner";
 import { useLoaderData } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
 export const Route = createFileRoute("/_protected/hand_in")({
   component: RouteComponent,
   loader: async () => {
@@ -27,22 +29,40 @@ function RouteComponent() {
   const navigate = useNavigate();
   const data = useLoaderData({ from: "/_protected/hand_in" });
   const userData = useAtomValue(userAtom);
+  const [searchQuery, setSearchQuery] = useState("");
+
   const setTurnInApplications = useSetAtom(turn_in_applicationAtom);
   useEffect(() => {
-    const turnInApplications =
+    let turnInApplications =
       data.length > 0
         ? data.filter(
             (document: DocumentRecord) =>
               document.current_handler_id === userData?.id
           )
         : null;
+    if (searchQuery && turnInApplications) {
+      console.log(turnInApplications);
+      turnInApplications = turnInApplications.filter((item: DocumentRecord) =>
+        item.accept_reference_number?.includes(searchQuery.toLowerCase())
+      );
+    }
     setTurnInApplications(turnInApplications);
-  }, [data, userData]);
+  }, [data, userData, searchQuery]);
+  console.log(turnInApplications);
   return (
     <div className="w-[100dvw] lg:w-[80dvw]">
       <h1 className="text-xl font-bold text-center mb-3">
         Handed applications
       </h1>
+      <div className="w-[50dvw] mx-auto mb-6">
+        <Input
+          type="text"
+          placeholder="Search by Reference Number..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full"
+        />
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
         {turnInApplications?.map((application: DocumentRecord) => (
           <Card
