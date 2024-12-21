@@ -20,6 +20,7 @@ import { Route as ProtectedHandinImport } from './routes/_protected/hand_in'
 import { Route as AuthSignupImport } from './routes/_auth/signup'
 import { Route as AuthLoginImport } from './routes/_auth/login'
 import { Route as ProtectedUserIdImport } from './routes/_protected/user.$id'
+import { Route as ProtectedUpdateIdImport } from './routes/_protected/update.$id'
 import { Route as ProtectedForwardIdImport } from './routes/_protected/forward.$id'
 import { Route as ProtectedApplicationIdImport } from './routes/_protected/application.$id'
 import { Route as AuthVerifyTokenImport } from './routes/_auth/verify.$token'
@@ -75,6 +76,12 @@ const AuthLoginRoute = AuthLoginImport.update({
 const ProtectedUserIdRoute = ProtectedUserIdImport.update({
   id: '/user/$id',
   path: '/user/$id',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+
+const ProtectedUpdateIdRoute = ProtectedUpdateIdImport.update({
+  id: '/update/$id',
+  path: '/update/$id',
   getParentRoute: () => ProtectedRoute,
 } as any)
 
@@ -177,6 +184,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedForwardIdImport
       parentRoute: typeof ProtectedImport
     }
+    '/_protected/update/$id': {
+      id: '/_protected/update/$id'
+      path: '/update/$id'
+      fullPath: '/update/$id'
+      preLoaderRoute: typeof ProtectedUpdateIdImport
+      parentRoute: typeof ProtectedImport
+    }
     '/_protected/user/$id': {
       id: '/_protected/user/$id'
       path: '/user/$id'
@@ -210,6 +224,7 @@ interface ProtectedRouteChildren {
   ProtectedIndexRoute: typeof ProtectedIndexRoute
   ProtectedApplicationIdRoute: typeof ProtectedApplicationIdRoute
   ProtectedForwardIdRoute: typeof ProtectedForwardIdRoute
+  ProtectedUpdateIdRoute: typeof ProtectedUpdateIdRoute
   ProtectedUserIdRoute: typeof ProtectedUserIdRoute
 }
 
@@ -220,6 +235,7 @@ const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedIndexRoute: ProtectedIndexRoute,
   ProtectedApplicationIdRoute: ProtectedApplicationIdRoute,
   ProtectedForwardIdRoute: ProtectedForwardIdRoute,
+  ProtectedUpdateIdRoute: ProtectedUpdateIdRoute,
   ProtectedUserIdRoute: ProtectedUserIdRoute,
 }
 
@@ -238,6 +254,7 @@ export interface FileRoutesByFullPath {
   '/verify/$token': typeof AuthVerifyTokenRoute
   '/application/$id': typeof ProtectedApplicationIdRoute
   '/forward/$id': typeof ProtectedForwardIdRoute
+  '/update/$id': typeof ProtectedUpdateIdRoute
   '/user/$id': typeof ProtectedUserIdRoute
 }
 
@@ -252,6 +269,7 @@ export interface FileRoutesByTo {
   '/verify/$token': typeof AuthVerifyTokenRoute
   '/application/$id': typeof ProtectedApplicationIdRoute
   '/forward/$id': typeof ProtectedForwardIdRoute
+  '/update/$id': typeof ProtectedUpdateIdRoute
   '/user/$id': typeof ProtectedUserIdRoute
 }
 
@@ -268,6 +286,7 @@ export interface FileRoutesById {
   '/_auth/verify/$token': typeof AuthVerifyTokenRoute
   '/_protected/application/$id': typeof ProtectedApplicationIdRoute
   '/_protected/forward/$id': typeof ProtectedForwardIdRoute
+  '/_protected/update/$id': typeof ProtectedUpdateIdRoute
   '/_protected/user/$id': typeof ProtectedUserIdRoute
 }
 
@@ -284,6 +303,7 @@ export interface FileRouteTypes {
     | '/verify/$token'
     | '/application/$id'
     | '/forward/$id'
+    | '/update/$id'
     | '/user/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -297,6 +317,7 @@ export interface FileRouteTypes {
     | '/verify/$token'
     | '/application/$id'
     | '/forward/$id'
+    | '/update/$id'
     | '/user/$id'
   id:
     | '__root__'
@@ -311,6 +332,7 @@ export interface FileRouteTypes {
     | '/_auth/verify/$token'
     | '/_protected/application/$id'
     | '/_protected/forward/$id'
+    | '/_protected/update/$id'
     | '/_protected/user/$id'
   fileRoutesById: FileRoutesById
 }
@@ -356,6 +378,7 @@ export const routeTree = rootRoute
         "/_protected/",
         "/_protected/application/$id",
         "/_protected/forward/$id",
+        "/_protected/update/$id",
         "/_protected/user/$id"
       ]
     },
@@ -393,6 +416,10 @@ export const routeTree = rootRoute
     },
     "/_protected/forward/$id": {
       "filePath": "_protected/forward.$id.tsx",
+      "parent": "/_protected"
+    },
+    "/_protected/update/$id": {
+      "filePath": "_protected/update.$id.tsx",
       "parent": "/_protected"
     },
     "/_protected/user/$id": {

@@ -23,6 +23,9 @@ import { AcceptDialog } from "@/components/AcceptDialog";
 import { RejectDialog } from "@/components/RejectDialog";
 import { ExternalLink } from "lucide-react";
 import { IncompleteDialog } from "@/components/IncompleteDialog";
+import { Pencil } from "lucide-react";
+import { useSetAtom } from "jotai";
+import { currentApplication } from "@/lib/atoms";
 interface User {
   id: string;
   name: string;
@@ -83,6 +86,7 @@ function RouteComponent() {
   const user = useAtomValue(userAtom);
   const { id } = useParams({ from: "/_protected/application/$id" });
   const navigate = useNavigate();
+  const setCurrentApplication = useSetAtom(currentApplication);
   if (!user) return;
   if (!data) return <div>Loading...</div>;
   if (!data.application) {
@@ -110,8 +114,26 @@ function RouteComponent() {
   return (
     <div className="w-[100dvw] lg:w-[80dvw]">
       <Card className="w-full max-w-4xl mx-auto">
-        <CardHeader>
-          <CardTitle>Application Details</CardTitle>
+        <CardHeader className="flex flex-row justify-between items-center">
+          <CardTitle className="text-xl font-bold">
+            Application Details
+          </CardTitle>
+          {application.status === "incomplete" &&
+            application.created_by.id === user.id && (
+              <button
+                onClick={() => {
+                  setCurrentApplication({
+                    id: application.id,
+                    subject: application.to_user,
+                    description: application.description,
+                    to: application.to_user,
+                  });
+                  navigate({ to: `/update/${application.id}` });
+                }}
+              >
+                <Pencil />
+              </button>
+            )}
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Application Information */}

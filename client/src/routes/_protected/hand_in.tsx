@@ -79,8 +79,20 @@ function RouteComponent() {
               </Badge>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600">{application.description}</p>
+              <h1>
+                <strong>Subject: </strong>
+                {application.subject}
+              </h1>
+              <h1>
+                <strong>To: </strong>
+                {application.to}
+              </h1>
               <p className="text-gray-600">
+                <strong>Description: </strong>
+                {application.description}
+              </p>
+              <p className="text-gray-600">
+                <strong>Application submitted date: </strong>
                 {formatDate(application.created_at)}
               </p>
             </CardContent>

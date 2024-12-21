@@ -24,6 +24,9 @@ export type DocumentRecord = {
   id: string; // UUID of the record
   status: "forwarded" | "pending" | "accepted" | "rejected";
   accept_reference_number: string; // Status (use union type if statuses are predefined)
+  subject: string;
+  to: string;
+  token_no: string;
 };
 import { Badge } from "@/components/ui/badge";
 export const Route = createFileRoute("/_protected/")({
@@ -141,8 +144,20 @@ function RouteComponent() {
                 </Badge>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">{application.description}</p>
+                <h1>
+                  <strong>Subject: </strong>
+                  {application.subject}
+                </h1>
+                <h1>
+                  <strong>To: </strong>
+                  {application.to}
+                </h1>
                 <p className="text-gray-600">
+                  <strong>Inward Number: </strong>
+                  {application.token_no}
+                </p>
+                <p className="text-gray-600">
+                  <strong>Application submitted date: </strong>
                   {formatDate(application.created_at)}
                 </p>
               </CardContent>

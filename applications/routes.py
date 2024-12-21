@@ -411,3 +411,74 @@ async def verifyApplication(application_id, access_token: str = Cookie(None)):
         session.add(newApplicationAction)
         session.commit()
     return JSONResponse(content={"message": "Application verified"}, status_code=200)
+
+
+@application_router.post("/update_app/{application_id}")
+async def updateApplication(
+    application_id: str,
+    document: UploadFile = File(None),
+    description: str = Form(...),
+    subject: str = Form(...),
+    for_user: str = Form(...),
+    access_token: str = Cookie(None),
+):
+    user = protectRoute(access_token)
+    if not isinstance(user, User):
+        return user
+
+    document_url = None
+    with Session(engine) as session:
+        # Fetch the application
+        statement = select(Applications).where(
+            Applications.id == UUID(str(application_id))
+        )
+        application = session.scalars(statement).one_or_none()
+
+        if not application:
+            return JSONResponse(
+                content={"message": "Application not found"}, status_code=404
+            )
+
+        # Update document if provided
+        if document and document.filename:
+            # Delete existing document if it exists
+            existing_document_statement = select(SupportingDocuments).where(
+                SupportingDocuments.application_id == UUID(str(application_id))
+            )
+            existing_document = session.scalars(
+                existing_document_statement
+            ).one_or_none()
+
+            if existing_document:
+                try:
+                    os.remove(existing_document.document_url)
+                except FileNotFoundError:
+                    pass
+
+                session.delete(existing_document)
+
+            # Save the new document
+            name, ext = document.filename.rsplit(".", 1)
+            unique_filename = f"{name}_{uuid4()}.{ext}"
+            document_url = f"media/{unique_filename}"
+            with open(document_url, "wb") as f:
+                content = await document.read()
+                f.write(content)
+
+            newDocument = SupportingDocuments(
+                application_id=UUID(str(application_id)),
+                document_name=document.filename,
+                document_url=document_url,
+            )
+            session.add(newDocument)
+
+        # Update application details
+        application.description = description
+        application.subject = subject
+        application.to = for_user
+
+        session.commit()
+
+    return JSONResponse(
+        content={"message": "Application updated successfully"}, status_code=200
+    )
