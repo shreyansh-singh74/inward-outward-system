@@ -1,8 +1,8 @@
-from sqlalchemy import String, ForeignKey
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy import String, ForeignKey, func, select
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 from uuid import UUID, uuid4
 from enum import Enum as PyEnum
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
 
@@ -16,12 +16,14 @@ class UserRole(str, PyEnum):
     HOD = "hod"
     EXAM_SECTION = "exam_section"
     T_AND_P = "t_and_p"
+    HOC = "hoc"
     CLERK = "clerk"
     SYSTEM_ADMIN = "system_admin"
 
 
 class ApplicationStatus(str, PyEnum):
     PENDING = "pending"
+    INCOMPLETE = "incomplete"
     ACCEPTED = "accepted"
     REJECTED = "rejected"
     FORWARDED = "forwarded"
@@ -45,7 +47,6 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(timezone.utc)
     )
-    password: Mapped[str] = mapped_column(String(300))
     applications: Mapped[List["Applications"]] = relationship(
         "Applications",
         back_populates="creator",
@@ -70,14 +71,20 @@ class User(Base):
     )
 
 
+class VerificationToken(Base):
+    __tablename__ = "verification_tokens"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=lambda: uuid4())
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    token: Mapped[str] = mapped_column(String(200))
+    expiry: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(timezone.utc) + timedelta(minutes=10)
+    )
+
+
 class Applications(Base):
     __tablename__ = "applications"
     id: Mapped[UUID] = mapped_column(primary_key=True, default=lambda: uuid4())
     description: Mapped[str] = mapped_column(String(256))
-    document_url: Mapped[Optional[str]] = mapped_column(
-        String(200),
-        default=None,
-    )
     created_by_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
     current_handler_id: Mapped[Optional[UUID]] = mapped_column(
         ForeignKey("users.id"), nullable=True
@@ -91,6 +98,8 @@ class Applications(Base):
     actions: Mapped[List["ApplicationActions"]] = relationship(
         "ApplicationActions", back_populates="application", cascade="all, delete-orphan"
     )
+    to: Mapped[str] = mapped_column(String(200))
+    subject: Mapped[str] = mapped_column(String(200))
     status: Mapped[ApplicationStatus] = mapped_column(default=ApplicationStatus.PENDING)
     created_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(timezone.utc)
@@ -98,6 +107,34 @@ class Applications(Base):
     accept_reference_number: Mapped[Optional[str]] = mapped_column(
         String(200), default=None
     )
+    is_verified: Mapped[bool] = mapped_column(default=False)
+    supporting_documents: Mapped[List["SupportingDocuments"]] = relationship(
+        "SupportingDocuments",
+        back_populates="application",
+        cascade="all, delete-orphan",
+    )
+    year: Mapped[int] = mapped_column()
+    token_no: Mapped[int] = mapped_column()
+
+    @staticmethod
+    def get_next_counter(session: Session, year: int) -> int:
+        stmt = select(func.max(Applications.token_no)).where(Applications.year == year)
+        result = session.execute(stmt).scalar()
+        return (result or 0) + 1
+
+    @classmethod
+    def create_with_counter(cls, session: Session, name: str) -> "Applications":
+        current_year = datetime.now().year
+        next_counter = cls.get_next_counter(session, current_year)
+        return cls(name=name, year=current_year, token_no=next_counter)
+
+
+class SupportingDocuments(Base):
+    __tablename__ = "supporting_documents"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=lambda: uuid4())
+    document_name: Mapped[UUID] = mapped_column(String(200))
+    document_url: Mapped[str] = mapped_column(String(200))
+    application_id: Mapped[UUID] = mapped_column(ForeignKey("applications.id"))
 
 
 class ApplicationActions(Base):
