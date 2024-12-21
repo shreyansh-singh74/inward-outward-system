@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { Card, CardContent, CardTitle, CardHeader } from "@/components/ui/card";
 import { CheckCircle, Clock, XCircle } from "lucide-react";
 import { formatDate } from "@/features/users/component/table";
+import { CircleSlash } from "lucide-react";
 export type DocumentRecord = {
   created_at: string; // ISO timestamp (e.g., "2024-12-15T11:37:29")
   created_by_id: string; // UUID of the user who created the record
@@ -55,6 +56,8 @@ export const getStatusIcon = (status: DocumentRecord["status"]) => {
       return <Clock className="h-5 w-5 text-yellow-500" />;
     case "rejected":
       return <XCircle className="h-5 w-5 text-red-500" />;
+    default:
+      return <CircleSlash className="h-5 w-5 text-yellow-500" />;
   }
 };
 

@@ -7,7 +7,12 @@ from fastapi import APIRouter, Cookie
 import jwt
 from config import JWT_SECRET, JWT_ALGORITHM, engine
 from uuid import UUID
-from db.models import Applications, ApplicationActions, ApplicationStatus
+from db.models import (
+    Applications,
+    ApplicationActions,
+    ApplicationStatus,
+    SupportingDocuments,
+)
 from datetime import datetime
 from .schema import (
     UpdateApplicationSchema,
@@ -98,8 +103,14 @@ async def createApplication(
             application_id=newApplication.id,
             action_type="INWARD",
         )
+        newDocument = SupportingDocuments(
+            application_id=application_id,
+            document_name=document.filename,
+            document_url=document_url,
+        )
         session.add(newApplication)
         session.add(newApplicationAction)
+        session.add(newDocument)
         session.commit()
         link = f"http://{os.getenv("CLIENT_URL")}/application/{application_id}"
         html_message = f"""
@@ -138,7 +149,10 @@ async def getApplication(application_id: UUID, access_token: str = Cookie(None))
 
         # Execute the query and group the results by application
         results = session.execute(statement).all()
-
+        statement = select(SupportingDocuments).where(
+            SupportingDocuments.application_id == application_id
+        )
+        documents = session.scalars(statement).all()
         if not results:
             return JSONResponse(
                 content={"message": "Application not found"}, status_code=404
@@ -163,6 +177,9 @@ async def getApplication(application_id: UUID, access_token: str = Cookie(None))
                         else None
                     ),
                     "token_no": application.token_no,
+                    "document": (
+                        documents[0].document_url if len(documents) > 0 else None
+                    ),
                     "accept_reference_number": (application.accept_reference_number),
                     "current_handler_id": str(application.current_handler_id),
                     "description": (
@@ -272,10 +289,17 @@ async def update(
             else:
                 html_message = f"""
                 <h1>Application is Accepted</h1>
+                <h1>Your reference Number is {result.token_no}</h1>
+                """
+        elif body.status == "REJECTED":
+            html_message = f"""
+                <h1>Application of token number {result.token_no}</h1>
+                <h1>Application is Rejected</h1>
                 """
         else:
             html_message = f"""
-                <h1>Application is Rejected</h1>
+                <h1>Application of token number {result.token_no}</h1>
+                <h1>Application is {body.status}</h1>
                 """
         subject = "please check this application"
         if result:

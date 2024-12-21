@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { useState } from "react";
-export function RejectDialog({
+export function IncompleteDialog({
   children,
   id,
 }: {
@@ -28,15 +28,15 @@ export function RejectDialog({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        status: "REJECTED",
+        status: "INCOMPLETE",
         remark: input,
         referenceNumber: "",
       }),
     });
     if (res.status !== 200) {
-      toast.error("Failed to accept application");
+      toast.error("Failed to do this action on this application");
     } else {
-      toast.success("Application rejected successfully");
+      toast.success("Application updated send successfully");
     }
   };
   return (

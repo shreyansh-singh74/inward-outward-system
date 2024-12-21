@@ -22,6 +22,7 @@ import { userAtom } from "@/lib/atoms";
 import { AcceptDialog } from "@/components/AcceptDialog";
 import { RejectDialog } from "@/components/RejectDialog";
 import { ExternalLink } from "lucide-react";
+import { IncompleteDialog } from "@/components/IncompleteDialog";
 interface User {
   id: string;
   name: string;
@@ -94,16 +95,6 @@ function RouteComponent() {
   const handleClick = () => {
     const url = `http://localhost:5173/api/documents/${document_name}`;
     window.open(url, "_blank");
-  };
-  const handleIncomplete = async () => {
-    const res = await fetch(`/api/application/incomplete/${application.id}`, {
-      method: "POST",
-    });
-    if (res.status !== 200) {
-      toast.error("Failed to mark application as incomplete");
-    } else {
-      toast.success("Application marked as incomplete");
-    }
   };
   const handleVerified = async () => {
     const res = await fetch(`/api/application/verify/${id}`, {
@@ -272,12 +263,11 @@ function RouteComponent() {
           </CardFooter>
         ) : (
           <CardFooter className="flex justify-between flex-col md:flex-row gap-4">
-            <Button
-              className="bg-blue-500 hover:bg-blue-600 w-full md:w-[45%]"
-              onClick={() => navigate({ to: "/" })}
-            >
-              Incomplete
-            </Button>
+            <IncompleteDialog id={id}>
+              <Button className="bg-blue-500 hover:bg-blue-600 w-full md:w-[45%]">
+                Incomplete
+              </Button>
+            </IncompleteDialog>
             <Button
               className="bg-green-500 hover:bg-green-600 w-full md:w-[45%]"
               onClick={() => handleVerified()}
