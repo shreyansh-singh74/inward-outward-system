@@ -156,16 +156,15 @@ async def getApplication(application_id: UUID, access_token: str = Cookie(None))
                 application_data = {
                     "id": str(application.id),
                     "status": application.status,
+                    "to_user": application.to,
                     "created_at": (
                         application.created_at.isoformat()
                         if application.created_at
                         else None
                     ),
+                    "token_no": application.token_no,
                     "accept_reference_number": (application.accept_reference_number),
                     "current_handler_id": str(application.current_handler_id),
-                    "document": (
-                        application.document_url if application.document_url else None
-                    ),
                     "description": (
                         application.description if application.description else None
                     ),
@@ -305,7 +304,6 @@ async def getAllApplications(
                 r[key] = str(value)
             if isinstance(value, datetime):
                 r[key] = value.isoformat()
-    print(ans)
     return JSONResponse(content={"applications": ans}, status_code=200)
 
 
@@ -319,16 +317,15 @@ async def ForwardApplication(
     if not isinstance(user, User):
         return user
     with Session(engine) as session:
-        statement = select(Applications).where(Applications.id == application_id)
+        statement = select(Applications).where(
+            Applications.id == UUID(str(application_id))
+        )
         result = session.scalars(statement).first()
         if not result:
             return JSONResponse(
                 content={"message": "Application not found"}, status_code=404
             )
-        if result.current_handler_id != user.id:
-            return JSONResponse(
-                content={"message": "You dont't have access"}, status_code=401
-            )
+
         statement = select(User).where(
             User.role == body.role and User.department == body.department
         )
@@ -337,7 +334,7 @@ async def ForwardApplication(
             return JSONResponse(
                 content={"message": "Receiver not found"}, status_code=404
             )
-        result.current_handler_id = receiver.id
+        result.current_handler_id = UUID(str(receiver.id))
         result.status = ApplicationStatus.FORWARDED
         newApplicationAction = ApplicationActions(
             from_user_id=user.id,
@@ -365,18 +362,18 @@ async def verifyApplication(application_id, access_token: str = Cookie(None)):
     if not isinstance(user, User):
         return user
     with Session(engine) as session:
-        statement = select(Applications).where(Applications.id == application_id)
+        statement = select(Applications).where(Applications.id == UUID(application_id))
         result = session.scalars(statement).first()
         if not result:
             return JSONResponse({"message": "Application not found"}, status_code=404)
-        statement = select(User).where(User.role == UserRole.PRINCIPAL)
+        statement = select(User).where(User.role == "PRINCIPAL")
         receiver = session.scalars(statement).first()
         if not receiver:
             return JSONResponse(
                 content={"message": "Receiver not found"}, status_code=404
             )
         result.is_verified = True
-        result.current_handler_id = receiver.id
+        result.current_handler_id = UUID(str(receiver.id))
         newApplicationAction = ApplicationActions(
             from_user_id=user.id,
             to_user_id=receiver.id,
@@ -387,7 +384,6 @@ async def verifyApplication(application_id, access_token: str = Cookie(None)):
             return JSONResponse(
                 content={"message": "Application not found"}, status_code=404
             )
-        result.is_verified = True
         session.add(newApplicationAction)
         session.commit()
     return JSONResponse(content={"message": "Application verified"}, status_code=200)

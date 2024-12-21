@@ -55,6 +55,8 @@ interface Application {
   status: string;
   actions: ApplicationAction[];
   accept_reference_number?: string;
+  to_user: string;
+  token_no: string;
 }
 
 interface ApplicationDetailsProps {
@@ -93,7 +95,27 @@ function RouteComponent() {
     const url = `http://localhost:5173/api/documents/${document_name}`;
     window.open(url, "_blank");
   };
-
+  const handleIncomplete = async () => {
+    const res = await fetch(`/api/application/incomplete/${application.id}`, {
+      method: "POST",
+    });
+    if (res.status !== 200) {
+      toast.error("Failed to mark application as incomplete");
+    } else {
+      toast.success("Application marked as incomplete");
+    }
+  };
+  const handleVerified = async () => {
+    const res = await fetch(`/api/application/verify/${id}`, {
+      method: "POST",
+    });
+    if (res.status !== 200) {
+      toast.error("Failed to mark application as verified");
+    } else {
+      toast.success("Application marked as verified");
+      navigate({ to: "/hand_in" });
+    }
+  };
   return (
     <div className="w-[100dvw] lg:w-[80dvw]">
       <Card className="w-full max-w-4xl mx-auto">
@@ -112,6 +134,14 @@ function RouteComponent() {
               <div>
                 <Label>Created At</Label>
                 <Input value={formatDate(application.created_at)} readOnly />
+              </div>
+              <div>
+                <Label>Token No</Label>
+                <Input value={application.token_no} readOnly />
+              </div>
+              <div>
+                <Label>TO</Label>
+                <Input value={application.to_user} readOnly />
               </div>
               <div>
                 <Label>Document URL</Label>
@@ -220,7 +250,8 @@ function RouteComponent() {
         </CardContent>
 
         {/* Action Buttons */}
-        {application.current_handler_id === user?.id && (
+        {application.current_handler_id === user?.id &&
+        user?.role !== "CLERKS" ? (
           <CardFooter className="flex justify-between flex-col md:flex-row gap-4">
             <AcceptDialog id={id}>
               <Button className="bg-green-500 hover:bg-green-600 w-full md:w-[33%]">
@@ -237,6 +268,21 @@ function RouteComponent() {
               onClick={() => navigate({ to: `/forward/${application.id}` })}
             >
               Forward
+            </Button>
+          </CardFooter>
+        ) : (
+          <CardFooter className="flex justify-between flex-col md:flex-row gap-4">
+            <Button
+              className="bg-blue-500 hover:bg-blue-600 w-full md:w-[45%]"
+              onClick={() => navigate({ to: "/" })}
+            >
+              Incomplete
+            </Button>
+            <Button
+              className="bg-green-500 hover:bg-green-600 w-full md:w-[45%]"
+              onClick={() => handleVerified()}
+            >
+              Verified
             </Button>
           </CardFooter>
         )}

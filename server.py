@@ -22,7 +22,6 @@ async def authenticate(access_token: str = Cookie(None)):
         )
     user_response = user.__dict__
     user_response.pop("_sa_instance_state", None)
-    print(user_response)
     for key, value in user_response.items():
         if isinstance(value, UUID):
             user_response[key] = str(value)

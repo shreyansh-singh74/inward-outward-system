@@ -29,7 +29,6 @@ async def signup(user: SignUpSchema):
     with Session(engine) as session:
         statement = select(User).where(User.tcet_email == user.email)
         results = session.scalars(statement).first()
-        print(results)
         if results:
             return {"message": "User already exists"}
     newUserId = uuid4()
@@ -65,7 +64,6 @@ async def signup(user: SignUpSchema):
 async def verify_user_account(token: str):
     token_data = decode_url_safe_token(token)
     user_email = token_data.get("email")
-    print(user_email)
     if user_email:
         with Session(engine) as session:
             stmt = select(User).where(User.tcet_email == user_email)
