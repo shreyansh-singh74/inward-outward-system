@@ -123,10 +123,30 @@ class Applications(Base):
         return (result or 0) + 1
 
     @classmethod
-    def create_with_counter(cls, session: Session, name: str) -> "Applications":
+    def create_with_counter(
+        cls,
+        session: Session,
+        description: str,
+        created_by_id: UUID,
+        current_handler_id: UUID,
+        id: UUID,
+        to: str,
+        subject: str,
+        status: ApplicationStatus,
+    ) -> "Applications":
         current_year = datetime.now().year
         next_counter = cls.get_next_counter(session, current_year)
-        return cls(name=name, year=current_year, token_no=next_counter)
+        return cls(
+            description=description,
+            created_by_id=created_by_id,
+            current_handler_id=current_handler_id,
+            id=id,
+            to=to,
+            subject=subject,
+            status=status,
+            year=current_year,
+            token_no=next_counter,
+        )
 
 
 class SupportingDocuments(Base):

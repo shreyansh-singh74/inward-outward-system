@@ -24,6 +24,7 @@ from uuid import UUID
 from datetime import datetime
 from dotenv import load_dotenv
 import os
+from db.models import UserRole
 
 load_dotenv()
 application_router = APIRouter()
@@ -55,8 +56,8 @@ def protectRoute(access_token: str):
 async def createApplication(
     document: UploadFile = File(None),
     description: str = Form(...),
-    role: str = Form(...),
-    department: str = Form(...),
+    subject: str = Form(...),
+    for_user: str = Form(...),
     access_token: str = Cookie(None),
 ):
     user = protectRoute(access_token)
@@ -73,22 +74,23 @@ async def createApplication(
             f.write(content)
     receiver_email = None
     with Session(engine) as session:
-        statement = select(User).where(
-            User.role == role and User.department == department
-        )
-        receiver = session.scalars(statement).first()
+        statement = select(User).where(User.role == "CLERKS")
+        receiver = session.scalars(statement).one()
         receiver_email = receiver.tcet_email
         if not receiver:
             return JSONResponse(
                 content={"message": "Receiver not found"}, status_code=404
             )
         application_id = uuid4()
-        newApplication = Applications(
+        newApplication = Applications.create_with_counter(
+            session=session,
             description=description,
-            document_url=document_url,
             created_by_id=user.id,
             current_handler_id=receiver.id,
             id=application_id,
+            to=for_user,
+            subject=subject,
+            status=ApplicationStatus.PENDING,
         )
         newApplicationAction = ApplicationActions(
             from_user_id=user.id,
@@ -355,3 +357,37 @@ async def ForwardApplication(
         if receiver.tcet_email:
             await create_message([receiver.tcet_email], subject, html_message)
     return JSONResponse(content={"message": "Application forwarded"}, status_code=200)
+
+
+@application_router.post("/verify/{application_id}")
+async def verifyApplication(application_id, access_token: str = Cookie(None)):
+    user = protectRoute(access_token)
+    if not isinstance(user, User):
+        return user
+    with Session(engine) as session:
+        statement = select(Applications).where(Applications.id == application_id)
+        result = session.scalars(statement).first()
+        if not result:
+            return JSONResponse({"message": "Application not found"}, status_code=404)
+        statement = select(User).where(User.role == UserRole.PRINCIPAL)
+        receiver = session.scalars(statement).first()
+        if not receiver:
+            return JSONResponse(
+                content={"message": "Receiver not found"}, status_code=404
+            )
+        result.is_verified = True
+        result.current_handler_id = receiver.id
+        newApplicationAction = ApplicationActions(
+            from_user_id=user.id,
+            to_user_id=receiver.id,
+            application_id=result.id,
+            action_type="VERIFIED",
+        )
+        if not result:
+            return JSONResponse(
+                content={"message": "Application not found"}, status_code=404
+            )
+        result.is_verified = True
+        session.add(newApplicationAction)
+        session.commit()
+    return JSONResponse(content={"message": "Application verified"}, status_code=200)

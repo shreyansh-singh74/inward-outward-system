@@ -14,8 +14,8 @@ export const UpdateUserSchema = z.object({
 });
 export const createApplicationSchema = zfd.formData({
   description: z.string().min(1, { message: "Description is required" }),
-  role: z.string(),
-  department: z.string(),
+  for_user: z.string().min(1, { message: "For user is required" }),
+  subject: z.string().min(1, { message: "Supervisor is required" }),
   document: zfd
     .file()
     .refine((file) => file.size < 1024 * 1024 * 2, {

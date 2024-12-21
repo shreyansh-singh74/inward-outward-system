@@ -1,40 +1,31 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createApplicationSchema, createApplicationType } from "@/lib/schema";
-import { FormProvider, useForm, useWatch } from "react-hook-form";
+import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { role_and_departments } from "@/contants";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Form } from "@/components/ui/form";
 import SelectFormControl from "@/components/select";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/Input";
 import TextArea from "@/components/Textarea";
 import { objectToFormData } from "@/utils";
 import { toast } from "sonner";
+import { turn_in_receivers } from "@/contants";
 export const Route = createFileRoute("/_protected/turn_in")({
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const [department, setDepartment] = useState([]);
   const [pending, setPending] = useState(false);
   const form = useForm<createApplicationType>({
     resolver: zodResolver(createApplicationSchema),
     defaultValues: {
       description: "",
-      role: "HOD",
-      department: "",
+      for_user: "",
+      subject: "",
     },
   });
-  const role = useWatch({
-    control: form.control,
-    name: "role",
-  });
-  useEffect(() => {
-    // @ts-expect-error: Unreachable code error
-    setDepartment(role_and_departments[role]);
-  }, [role]);
   const onSubmit = async (values: createApplicationType) => {
     const formdata = objectToFormData(values);
     setPending(true);
@@ -61,17 +52,12 @@ function RouteComponent() {
             <form onSubmit={form.handleSubmit(onSubmit)}>
               <FormProvider {...form}>
                 <SelectFormControl
-                  options={Object.keys(role_and_departments)}
-                  label="Role"
-                  name="role"
-                  placeholder="Select a Role for this user"
+                  options={turn_in_receivers}
+                  label="For"
+                  name="for_user"
+                  placeholder="Select whom you want to give this application"
                 />
-                <SelectFormControl
-                  label="Department"
-                  name="department"
-                  placeholder="Select a department"
-                  options={department}
-                />
+                <Input name="subject" label="Enter the subject" />
                 <TextArea
                   label="Description of query"
                   name="description"

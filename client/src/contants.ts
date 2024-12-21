@@ -7,3 +7,16 @@ export const role_and_departments = {
   T_N_P: ["T_N_P"],
   CLERKS: ["CLERKS"],
 };
+
+export const turn_in_receivers = [
+  "HOD IT",
+  "HOD COMP",
+  "HOD AIDS",
+  "HOD AIML",
+  "HOD CSE",
+  "HOD MECH",
+  "TNP",
+  "HOC",
+  "RND",
+  "PRINCIPAL",
+];
