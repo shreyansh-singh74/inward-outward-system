@@ -19,12 +19,10 @@ import { Route as ProtectedTurninImport } from './routes/_protected/turn_in'
 import { Route as ProtectedHandinImport } from './routes/_protected/hand_in'
 import { Route as AuthSignupImport } from './routes/_auth/signup'
 import { Route as AuthLoginImport } from './routes/_auth/login'
-import { Route as AuthForgotpasswordrequestImport } from './routes/_auth/forgot_password_request'
 import { Route as ProtectedUserIdImport } from './routes/_protected/user.$id'
 import { Route as ProtectedForwardIdImport } from './routes/_protected/forward.$id'
 import { Route as ProtectedApplicationIdImport } from './routes/_protected/application.$id'
 import { Route as AuthVerifyTokenImport } from './routes/_auth/verify.$token'
-import { Route as AuthResetPasswordTokenImport } from './routes/_auth/reset-password.$token'
 
 // Create/Update Routes
 
@@ -74,12 +72,6 @@ const AuthLoginRoute = AuthLoginImport.update({
   getParentRoute: () => AuthRoute,
 } as any)
 
-const AuthForgotpasswordrequestRoute = AuthForgotpasswordrequestImport.update({
-  id: '/forgot_password_request',
-  path: '/forgot_password_request',
-  getParentRoute: () => AuthRoute,
-} as any)
-
 const ProtectedUserIdRoute = ProtectedUserIdImport.update({
   id: '/user/$id',
   path: '/user/$id',
@@ -104,12 +96,6 @@ const AuthVerifyTokenRoute = AuthVerifyTokenImport.update({
   getParentRoute: () => AuthRoute,
 } as any)
 
-const AuthResetPasswordTokenRoute = AuthResetPasswordTokenImport.update({
-  id: '/reset-password/$token',
-  path: '/reset-password/$token',
-  getParentRoute: () => AuthRoute,
-} as any)
-
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
@@ -127,13 +113,6 @@ declare module '@tanstack/react-router' {
       fullPath: ''
       preLoaderRoute: typeof ProtectedImport
       parentRoute: typeof rootRoute
-    }
-    '/_auth/forgot_password_request': {
-      id: '/_auth/forgot_password_request'
-      path: '/forgot_password_request'
-      fullPath: '/forgot_password_request'
-      preLoaderRoute: typeof AuthForgotpasswordrequestImport
-      parentRoute: typeof AuthImport
     }
     '/_auth/login': {
       id: '/_auth/login'
@@ -177,13 +156,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedIndexImport
       parentRoute: typeof ProtectedImport
     }
-    '/_auth/reset-password/$token': {
-      id: '/_auth/reset-password/$token'
-      path: '/reset-password/$token'
-      fullPath: '/reset-password/$token'
-      preLoaderRoute: typeof AuthResetPasswordTokenImport
-      parentRoute: typeof AuthImport
-    }
     '/_auth/verify/$token': {
       id: '/_auth/verify/$token'
       path: '/verify/$token'
@@ -218,18 +190,14 @@ declare module '@tanstack/react-router' {
 // Create and export the route tree
 
 interface AuthRouteChildren {
-  AuthForgotpasswordrequestRoute: typeof AuthForgotpasswordrequestRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthSignupRoute: typeof AuthSignupRoute
-  AuthResetPasswordTokenRoute: typeof AuthResetPasswordTokenRoute
   AuthVerifyTokenRoute: typeof AuthVerifyTokenRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
-  AuthForgotpasswordrequestRoute: AuthForgotpasswordrequestRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthSignupRoute: AuthSignupRoute,
-  AuthResetPasswordTokenRoute: AuthResetPasswordTokenRoute,
   AuthVerifyTokenRoute: AuthVerifyTokenRoute,
 }
 
@@ -261,14 +229,12 @@ const ProtectedRouteWithChildren = ProtectedRoute._addFileChildren(
 
 export interface FileRoutesByFullPath {
   '': typeof ProtectedRouteWithChildren
-  '/forgot_password_request': typeof AuthForgotpasswordrequestRoute
   '/login': typeof AuthLoginRoute
   '/signup': typeof AuthSignupRoute
   '/hand_in': typeof ProtectedHandinRoute
   '/turn_in': typeof ProtectedTurninRoute
   '/users': typeof ProtectedUsersRoute
   '/': typeof ProtectedIndexRoute
-  '/reset-password/$token': typeof AuthResetPasswordTokenRoute
   '/verify/$token': typeof AuthVerifyTokenRoute
   '/application/$id': typeof ProtectedApplicationIdRoute
   '/forward/$id': typeof ProtectedForwardIdRoute
@@ -277,14 +243,12 @@ export interface FileRoutesByFullPath {
 
 export interface FileRoutesByTo {
   '': typeof AuthRouteWithChildren
-  '/forgot_password_request': typeof AuthForgotpasswordrequestRoute
   '/login': typeof AuthLoginRoute
   '/signup': typeof AuthSignupRoute
   '/hand_in': typeof ProtectedHandinRoute
   '/turn_in': typeof ProtectedTurninRoute
   '/users': typeof ProtectedUsersRoute
   '/': typeof ProtectedIndexRoute
-  '/reset-password/$token': typeof AuthResetPasswordTokenRoute
   '/verify/$token': typeof AuthVerifyTokenRoute
   '/application/$id': typeof ProtectedApplicationIdRoute
   '/forward/$id': typeof ProtectedForwardIdRoute
@@ -295,14 +259,12 @@ export interface FileRoutesById {
   __root__: typeof rootRoute
   '/_auth': typeof AuthRouteWithChildren
   '/_protected': typeof ProtectedRouteWithChildren
-  '/_auth/forgot_password_request': typeof AuthForgotpasswordrequestRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/signup': typeof AuthSignupRoute
   '/_protected/hand_in': typeof ProtectedHandinRoute
   '/_protected/turn_in': typeof ProtectedTurninRoute
   '/_protected/users': typeof ProtectedUsersRoute
   '/_protected/': typeof ProtectedIndexRoute
-  '/_auth/reset-password/$token': typeof AuthResetPasswordTokenRoute
   '/_auth/verify/$token': typeof AuthVerifyTokenRoute
   '/_protected/application/$id': typeof ProtectedApplicationIdRoute
   '/_protected/forward/$id': typeof ProtectedForwardIdRoute
@@ -313,14 +275,12 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | ''
-    | '/forgot_password_request'
     | '/login'
     | '/signup'
     | '/hand_in'
     | '/turn_in'
     | '/users'
     | '/'
-    | '/reset-password/$token'
     | '/verify/$token'
     | '/application/$id'
     | '/forward/$id'
@@ -328,14 +288,12 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | ''
-    | '/forgot_password_request'
     | '/login'
     | '/signup'
     | '/hand_in'
     | '/turn_in'
     | '/users'
     | '/'
-    | '/reset-password/$token'
     | '/verify/$token'
     | '/application/$id'
     | '/forward/$id'
@@ -344,14 +302,12 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_auth'
     | '/_protected'
-    | '/_auth/forgot_password_request'
     | '/_auth/login'
     | '/_auth/signup'
     | '/_protected/hand_in'
     | '/_protected/turn_in'
     | '/_protected/users'
     | '/_protected/'
-    | '/_auth/reset-password/$token'
     | '/_auth/verify/$token'
     | '/_protected/application/$id'
     | '/_protected/forward/$id'
@@ -386,10 +342,8 @@ export const routeTree = rootRoute
     "/_auth": {
       "filePath": "_auth.tsx",
       "children": [
-        "/_auth/forgot_password_request",
         "/_auth/login",
         "/_auth/signup",
-        "/_auth/reset-password/$token",
         "/_auth/verify/$token"
       ]
     },
@@ -404,10 +358,6 @@ export const routeTree = rootRoute
         "/_protected/forward/$id",
         "/_protected/user/$id"
       ]
-    },
-    "/_auth/forgot_password_request": {
-      "filePath": "_auth/forgot_password_request.tsx",
-      "parent": "/_auth"
     },
     "/_auth/login": {
       "filePath": "_auth/login.tsx",
@@ -432,10 +382,6 @@ export const routeTree = rootRoute
     "/_protected/": {
       "filePath": "_protected/index.tsx",
       "parent": "/_protected"
-    },
-    "/_auth/reset-password/$token": {
-      "filePath": "_auth/reset-password.$token.tsx",
-      "parent": "/_auth"
     },
     "/_auth/verify/$token": {
       "filePath": "_auth/verify.$token.tsx",

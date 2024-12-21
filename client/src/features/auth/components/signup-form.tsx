@@ -22,7 +22,6 @@ const SignUpForm = () => {
     defaultValues: {
       name: "",
       email: "",
-      password: "",
       department: "",
     },
   });
@@ -37,6 +36,7 @@ const SignUpForm = () => {
     });
     if (res.status !== 200) {
       toast.error("Failed to create account");
+      setPending(false);
       return;
     }
     toast.success("Account created successfully verify your account");
@@ -56,7 +56,6 @@ const SignUpForm = () => {
             <FormProvider {...form}>
               <Input label="Email" name="email" />
               <Input label="Username" name="name" />
-              <Input label="Password" name="password" type="password" />
               <SelectFormControl
                 options={SignupDepartments}
                 placeholder="Select a department"

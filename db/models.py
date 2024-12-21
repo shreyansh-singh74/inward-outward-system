@@ -135,6 +135,9 @@ class SupportingDocuments(Base):
     document_name: Mapped[UUID] = mapped_column(String(200))
     document_url: Mapped[str] = mapped_column(String(200))
     application_id: Mapped[UUID] = mapped_column(ForeignKey("applications.id"))
+    application: Mapped["Applications"] = relationship(
+        "Applications", back_populates="supporting_documents"
+    )
 
 
 class ApplicationActions(Base):

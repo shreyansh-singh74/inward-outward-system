@@ -12,18 +12,16 @@ import { LoginSchema, LoginType } from "@/lib/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 const SignInForm = () => {
   const form = useForm<LoginType>({
     resolver: zodResolver(LoginSchema),
     defaultValues: {
       email: "",
-      password: "",
     },
   });
   const [loading, setLoading] = React.useState(false);
-  const navigate = useNavigate();
   const onSubmit = async (values: LoginType) => {
     setLoading(true);
     const res = await fetch(`/api/auth/login`, {
@@ -36,8 +34,7 @@ const SignInForm = () => {
     if (res.status !== 200) {
       toast.error("Failed to Login");
     } else {
-      toast.success("Logged in successfully");
-      navigate({ to: "/" });
+      toast.success("Login link sent to your email");
     }
     setLoading(false);
   };
@@ -55,13 +52,6 @@ const SignInForm = () => {
           >
             <FormProvider {...form}>
               <Input label="Email" name="email" />
-              <Input label="Password" name="password" type="password" />
-              <Link
-                to="/forgot_password_request"
-                className="flex justify-end  text-blue-600 my-3 text-sm hover:underline hover:underline-offset-2"
-              >
-                Forgot Password?
-              </Link>
             </FormProvider>
             <Button
               className="bg-[#d17a00] w-full text-white text-[16px]"

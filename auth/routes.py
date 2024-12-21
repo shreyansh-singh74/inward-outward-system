@@ -1,13 +1,11 @@
 from .schema import (
     SignUpSchema,
     LoginSchema,
-    ForgotPasswordSchema,
-    PasswordResetConfirm,
 )
 import bcrypt
 from sqlalchemy import Select as select
 from sqlalchemy.orm import Session
-from db.models import User
+from db.models import User, VerificationToken
 from fastapi import APIRouter, status, Response
 from config import engine, ACCESS_TOKEN_EXPIRY, create_access_token
 from datetime import timedelta
@@ -17,6 +15,8 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import HTTPException
 from db.models import UserRole
 from dotenv import load_dotenv
+from uuid import uuid4
+from datetime import datetime, timezone
 
 load_dotenv()
 import os
@@ -26,24 +26,29 @@ authRouter = APIRouter()
 
 @authRouter.post("/signup")
 async def signup(user: SignUpSchema):
-    hashedPassword = bcrypt.hashpw(user.password.encode("utf-8"), bcrypt.gensalt())
     with Session(engine) as session:
         statement = select(User).where(User.tcet_email == user.email)
         results = session.scalars(statement).first()
         print(results)
         if results:
             return {"message": "User already exists"}
+    newUserId = uuid4()
     newUser = User(
-        password=hashedPassword,
+        id=newUserId,
         tcet_email=user.email,
         username=user.name,
         role=UserRole.STUDENT,
         department=user.department,
     )
+    token = create_url_safe_token({"email": user.email})
+    newVerificationToken = VerificationToken(
+        user_id=newUserId,
+        token=token,
+    )
     with Session(engine) as session:
         session.add(newUser)
+        session.add(newVerificationToken)
         session.commit()
-    token = create_url_safe_token({"email": user.email})
     link = f"http://{os.getenv("CLIENT_URL")}/verify/{token}"
 
     html = f"""
@@ -60,21 +65,39 @@ async def signup(user: SignUpSchema):
 async def verify_user_account(token: str):
     token_data = decode_url_safe_token(token)
     user_email = token_data.get("email")
+    print(user_email)
     if user_email:
         with Session(engine) as session:
             stmt = select(User).where(User.tcet_email == user_email)
-            result = session.scalars(stmt).one()
+            statement = select(VerificationToken).where(
+                VerificationToken.token == str(token)
+            )
+            result = session.scalars(stmt).first()
             if not result:
-                return {"message": "User not found"}, 401
+                return JSONResponse({"message": "User not found"}, 401)
+            token_result = session.scalars(statement).first()
+            if not token_result:
+                return JSONResponse({"message": "Invalid token"}, status_code=401)
+            if token_result.expiry < datetime.now(timezone.utc).replace(tzinfo=None):
+                return JSONResponse({"message": "Token expired"}, status_code=401)
             result.isEmailVerified = True
             session.commit()
-            return JSONResponse(
-                content={"message": "Account verified successfully"},
+            response = JSONResponse(
+                content={"message": "User is now Authorized"},
                 status_code=status.HTTP_200_OK,
             )
-    return JSONResponse(
-        content={"message": "Invalid token"}, status_code=status.HTTP_401_UNAUTHORIZED
-    )
+            access_token = create_access_token(
+                data={"sub": str(result.id)},
+            )
+            response.set_cookie(
+                key="access_token",
+                value=access_token,
+                max_age=3600 * 24 * 10,
+                httponly=True,
+                secure=False,
+            )
+        return response
+    return JSONResponse({"message": "Invalid token"}, 401)
 
 
 @authRouter.post("/login")
@@ -86,86 +109,26 @@ async def login(body: LoginSchema, response: Response):
             return JSONResponse(
                 content={"message": "Invalid Credentials"}, status_code=401
             )
-    verifyPassword = bcrypt.checkpw(
-        body.password.encode("utf-8"), results.password.encode("utf-8")
-    )
-    if not verifyPassword:
-        return JSONResponse(content={"message": "Invalid Credentials"}, status_code=401)
     if not results.isEmailVerified:
         return JSONResponse({"message": "Email not verified"}, 401)
-    access_token = create_access_token(
-        data={"sub": str(results.id)},
+    token = create_url_safe_token({"email": body.email})
+    newVerificationToken = VerificationToken(
+        user_id=results.id,
+        token=token,
     )
+    with Session(engine) as session:
+        session.add(newVerificationToken)
+        session.commit()
+    link = f"http://{os.getenv("CLIENT_URL")}/verify/{token}"
+    html = f"""
+    <h1>Sign In Link</h1>
+    <p>Please click this <a href="{link}">link</a> to Sign in your account</p>
+    """
+    subject = "Verify Your email"
+    emails = [body.email]
+    await create_message(emails, subject, html)
     response = JSONResponse(
-        content={"access_token": access_token, "token_type": "bearer"},
+        content={"message": "Login email is set to your email"},
         status_code=200,
     )
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        max_age=3600 * 24 * 10,
-        httponly=True,
-        secure=False,
-    )
     return response
-
-
-@authRouter.post("/password-reset-request")
-async def password_reset_request(email_data: ForgotPasswordSchema):
-    email = email_data.email
-
-    token = create_url_safe_token({"email": email})
-
-    link = f"http://{os.getenv("CLIENT_URL")}/reset-password/{token}"
-
-    html_message = f"""
-    <h1>Reset Your Password</h1>
-    <p>Please click this <a href="{link}">link</a> to Reset Your Password</p>
-    """
-    subject = "Reset Your Password"
-
-    await create_message([email], subject, html_message)
-    return JSONResponse(
-        content={
-            "message": "Please check your email for instructions to reset your password",
-        },
-        status_code=status.HTTP_200_OK,
-    )
-
-
-@authRouter.post("/password-reset-confirm/{token}")
-async def reset_account_password(
-    token: str,
-    passwords: PasswordResetConfirm,
-):
-    new_password = passwords.new_password
-    confirm_password = passwords.confirm_password
-    if new_password != confirm_password:
-        raise HTTPException(
-            detail="Passwords do not match", status_code=status.HTTP_400_BAD_REQUEST
-        )
-    token_data = decode_url_safe_token(token)
-    user_email = token_data.get("email")
-    if user_email:
-        with Session(engine) as session:
-            stmt = select(User).where(User.tcet_email == user_email)
-            result = session.scalars(stmt).first()
-            print(result)
-            if not result:
-                return JSONResponse(
-                    content={"message": "User not found"}, status_code=401
-                )
-            hashedPassword = bcrypt.hashpw(
-                new_password.encode("utf-8"), bcrypt.gensalt()
-            )
-            result.password = hashedPassword
-            session.commit()
-        return JSONResponse(
-            content={"message": "Password reset Successfully"},
-            status_code=status.HTTP_200_OK,
-        )
-
-    return JSONResponse(
-        content={"message": "Error occured during password reset."},
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-    )

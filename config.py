@@ -9,7 +9,9 @@ from sqlalchemy import create_engine
 
 dotenv.load_dotenv()
 db_url: str = os.getenv("DB_URL", "")
-engine = create_engine(db_url, echo=True)
+engine = create_engine(
+    db_url,
+)
 JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_ALGORITHM = os.getenv("ALGORITHM")
 ACCESS_TOKEN_EXPIRY = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "")
