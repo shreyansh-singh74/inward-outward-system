@@ -26,6 +26,7 @@ import { IncompleteDialog } from "@/components/IncompleteDialog";
 import { Pencil } from "lucide-react";
 import { useSetAtom } from "jotai";
 import { currentApplication } from "@/lib/atoms";
+import Actions from "@/components/Actions";
 interface User {
   id: string;
   name: string;
@@ -34,6 +35,7 @@ interface User {
   tcet_email: string;
   created_at: string;
   isEmailVerified: boolean;
+  username: string;
 }
 
 interface ApplicationAction {
@@ -182,13 +184,7 @@ function RouteComponent() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div>
                 <Label>Username</Label>
-                <Input
-                  value={
-                    // @ts-expect-error: Unreachable code error
-                    application.created_by.username
-                  }
-                  readOnly
-                />
+                <Input value={application.created_by.username} readOnly />
               </div>
               <div>
                 <Label>Role</Label>
@@ -212,52 +208,7 @@ function RouteComponent() {
           </section>
 
           {/* Application Actions */}
-          <section className="space-y-2">
-            <h2 className="text-xl font-semibold">Application Actions</h2>
-            {application.actions.map((action, index) => (
-              <Card key={action.id} className="p-4">
-                <h3 className="font-semibold mb-2">Action {index + 1}</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Action Type</Label>
-                    <Input value={action.action_type} readOnly />
-                  </div>
-                  <div>
-                    <Label>Created At</Label>
-                    <Input value={formatDate(action.created_at)} readOnly />
-                  </div>
-                  <div className="flex gap-3 flex-col">
-                    <Label>From User</Label>
-                    <Input
-                      value={
-                        // @ts-expect-error: Unreachable code error
-                        action.from_user.username
-                      }
-                      readOnly
-                    />
-                    <Input value={action.from_user.role} readOnly />
-                    <Input value={action.from_user.department} readOnly />
-                  </div>
-                  <div className="flex gap-3 flex-col">
-                    <Label>To User</Label>
-                    <Input value={action.to_user.name} readOnly />
-                    <Input value={action.to_user.role} readOnly />
-                    <Input value={action.to_user.department} readOnly />
-                  </div>
-                </div>
-                <div className="mt-2">
-                  <Label>Comments</Label>
-                  <Textarea
-                    value={
-                      // @ts-expect-error: Unreachable code error
-                      action.comment || "No comments"
-                    }
-                    readOnly
-                  />
-                </div>
-              </Card>
-            ))}
-          </section>
+          <Actions application={application} />
 
           {/* New Action */}
         </CardContent>
