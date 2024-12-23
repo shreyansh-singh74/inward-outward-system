@@ -16,6 +16,7 @@ import { Route as AuthImport } from './routes/_auth'
 import { Route as ProtectedIndexImport } from './routes/_protected/index'
 import { Route as ProtectedUsersImport } from './routes/_protected/users'
 import { Route as ProtectedTurninImport } from './routes/_protected/turn_in'
+import { Route as ProtectedOtherapplicationImport } from './routes/_protected/other_application'
 import { Route as ProtectedHandinImport } from './routes/_protected/hand_in'
 import { Route as AuthSignupImport } from './routes/_auth/signup'
 import { Route as AuthLoginImport } from './routes/_auth/login'
@@ -52,6 +53,12 @@ const ProtectedUsersRoute = ProtectedUsersImport.update({
 const ProtectedTurninRoute = ProtectedTurninImport.update({
   id: '/turn_in',
   path: '/turn_in',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+
+const ProtectedOtherapplicationRoute = ProtectedOtherapplicationImport.update({
+  id: '/other_application',
+  path: '/other_application',
   getParentRoute: () => ProtectedRoute,
 } as any)
 
@@ -142,6 +149,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedHandinImport
       parentRoute: typeof ProtectedImport
     }
+    '/_protected/other_application': {
+      id: '/_protected/other_application'
+      path: '/other_application'
+      fullPath: '/other_application'
+      preLoaderRoute: typeof ProtectedOtherapplicationImport
+      parentRoute: typeof ProtectedImport
+    }
     '/_protected/turn_in': {
       id: '/_protected/turn_in'
       path: '/turn_in'
@@ -219,6 +233,7 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 interface ProtectedRouteChildren {
   ProtectedHandinRoute: typeof ProtectedHandinRoute
+  ProtectedOtherapplicationRoute: typeof ProtectedOtherapplicationRoute
   ProtectedTurninRoute: typeof ProtectedTurninRoute
   ProtectedUsersRoute: typeof ProtectedUsersRoute
   ProtectedIndexRoute: typeof ProtectedIndexRoute
@@ -230,6 +245,7 @@ interface ProtectedRouteChildren {
 
 const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedHandinRoute: ProtectedHandinRoute,
+  ProtectedOtherapplicationRoute: ProtectedOtherapplicationRoute,
   ProtectedTurninRoute: ProtectedTurninRoute,
   ProtectedUsersRoute: ProtectedUsersRoute,
   ProtectedIndexRoute: ProtectedIndexRoute,
@@ -248,6 +264,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof AuthLoginRoute
   '/signup': typeof AuthSignupRoute
   '/hand_in': typeof ProtectedHandinRoute
+  '/other_application': typeof ProtectedOtherapplicationRoute
   '/turn_in': typeof ProtectedTurninRoute
   '/users': typeof ProtectedUsersRoute
   '/': typeof ProtectedIndexRoute
@@ -263,6 +280,7 @@ export interface FileRoutesByTo {
   '/login': typeof AuthLoginRoute
   '/signup': typeof AuthSignupRoute
   '/hand_in': typeof ProtectedHandinRoute
+  '/other_application': typeof ProtectedOtherapplicationRoute
   '/turn_in': typeof ProtectedTurninRoute
   '/users': typeof ProtectedUsersRoute
   '/': typeof ProtectedIndexRoute
@@ -280,6 +298,7 @@ export interface FileRoutesById {
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/signup': typeof AuthSignupRoute
   '/_protected/hand_in': typeof ProtectedHandinRoute
+  '/_protected/other_application': typeof ProtectedOtherapplicationRoute
   '/_protected/turn_in': typeof ProtectedTurninRoute
   '/_protected/users': typeof ProtectedUsersRoute
   '/_protected/': typeof ProtectedIndexRoute
@@ -297,6 +316,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/hand_in'
+    | '/other_application'
     | '/turn_in'
     | '/users'
     | '/'
@@ -311,6 +331,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/hand_in'
+    | '/other_application'
     | '/turn_in'
     | '/users'
     | '/'
@@ -326,6 +347,7 @@ export interface FileRouteTypes {
     | '/_auth/login'
     | '/_auth/signup'
     | '/_protected/hand_in'
+    | '/_protected/other_application'
     | '/_protected/turn_in'
     | '/_protected/users'
     | '/_protected/'
@@ -373,6 +395,7 @@ export const routeTree = rootRoute
       "filePath": "_protected.tsx",
       "children": [
         "/_protected/hand_in",
+        "/_protected/other_application",
         "/_protected/turn_in",
         "/_protected/users",
         "/_protected/",
@@ -392,6 +415,10 @@ export const routeTree = rootRoute
     },
     "/_protected/hand_in": {
       "filePath": "_protected/hand_in.tsx",
+      "parent": "/_protected"
+    },
+    "/_protected/other_application": {
+      "filePath": "_protected/other_application.tsx",
       "parent": "/_protected"
     },
     "/_protected/turn_in": {
