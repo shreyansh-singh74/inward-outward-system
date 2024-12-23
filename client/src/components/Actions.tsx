@@ -51,6 +51,7 @@ export default function Actions({ application }: ApplicationTimelineProps) {
   const [selectedAction, setSelectedAction] = useState<Action | null>(null);
   const { actions } = application;
   const sortedAction = actions.sort(
+    // @ts-expect-error:-date
     (a, b) => new Date(a.created_at) - new Date(b.created_at)
   );
   return (
