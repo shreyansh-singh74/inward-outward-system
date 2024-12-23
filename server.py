@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Cookie, HTTPException
+from fastapi import FastAPI, Cookie, HTTPException, Request
+from fastapi.staticfiles import StaticFiles
 from auth.routes import authRouter
 from fastapi.responses import FileResponse
 from config import engine
@@ -67,3 +68,15 @@ async def get_document(filename: str):
 app.include_router(authRouter, prefix="/api/auth")
 app.include_router(sys_admin_router, prefix="/api/sys_admin")
 app.include_router(application_router, prefix="/api/application")
+
+app.mount("/assets", StaticFiles(directory="static/dist/assets"), name="assets")
+
+
+@app.get("/{full_path:path}")
+async def catch_all(full_path: str, request: Request):
+    index_path = os.path.join("static/dist", "index.html")
+    if request.url.path.startswith("/api"):
+        return JSONResponse({"error": "API endpoint not found"}, status_code=404)
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"message": "File not found"}

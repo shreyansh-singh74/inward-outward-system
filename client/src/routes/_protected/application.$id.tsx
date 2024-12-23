@@ -99,7 +99,7 @@ function RouteComponent() {
   console.log(application);
   const document_name = application.document?.split("/")[1];
   const handleClick = () => {
-    const url = `http://localhost:5173/api/documents/${document_name}`;
+    const url = `http://localhost:8000/api/documents/${document_name}`;
     window.open(url, "_blank");
   };
   const handleVerified = async () => {

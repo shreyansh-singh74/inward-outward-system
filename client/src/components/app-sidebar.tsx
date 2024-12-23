@@ -15,6 +15,7 @@ import { userAtom } from "@/lib/atoms";
 import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { router } from "@/main";
+import Logo from "@/assets/tcet_logo_2.png";
 const items = [
   {
     title: "My applications",
@@ -47,7 +48,6 @@ const items = [
   {
     title: "Logout",
     function: async () => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const res = await fetch("/api/logout", {
         method: "POST",
       });
@@ -66,12 +66,22 @@ export function AppSidebar() {
     const studentOption = authoritiesOption.filter(
       (item) => item.title !== "Handed application"
     );
+    // const principalOption = {
+    //   title: "Other_application",
+    //   function: () => {
+    //     router.navigate({ to: "/other_application" });
+    //   },
+    //   icon: Search,
+    // };
     if (user?.role === "student") {
       setSideBarItems(studentOption);
     } else if (user?.role === "system_admin") {
       setSideBarItems(items);
     } else {
       setSideBarItems(authoritiesOption);
+      // if (user?.role === "PRINCIPAL") {
+      //   setSideBarItems([...authoritiesOption, principalOption]);
+      // }
     }
   }, [user]);
   return (
@@ -79,7 +89,7 @@ export function AppSidebar() {
       <SidebarContent className="bg-[#d17a00] text-white">
         <SidebarGroup>
           <SidebarGroupLabel className="text-white flex flex-col mb-16">
-            <img src="/tcet_logo_2.png" />
+            <img src={Logo} />
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>

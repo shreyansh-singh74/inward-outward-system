@@ -223,7 +223,7 @@ async def getApplication(application_id: UUID, access_token: str = Cookie(None))
                         "to_user": (
                             {
                                 "id": str(to_user.id) if to_user else None,
-                                "name": to_user.username if to_user else None,
+                                "username": to_user.username if to_user else None,
                                 "role": to_user.role if to_user else None,
                                 "department": to_user.department if to_user else None,
                             }
@@ -482,3 +482,34 @@ async def updateApplication(
     return JSONResponse(
         content={"message": "Application updated successfully"}, status_code=200
     )
+
+
+@application_router.get("/get_all")
+async def getAllApplicationsForPrincipal(
+    access_token: str = Cookie(None),
+):
+    user = protectRoute(access_token)
+    if not isinstance(user, User):
+        return user
+    if user.role != UserRole.PRINCIPAL:
+        return JSONResponse(
+            content={"message": "You are not authorized to view this page"},
+            status_code=401,
+        )
+    user = protectRoute(access_token)
+    if not isinstance(user, User):
+        return user
+    with Session(engine) as session:
+        applications = select(Applications).where(
+            Applications.current_handler_id != user.id
+        )
+        result = session.scalars(applications).all()
+    ans = [r.__dict__ for r in result]
+    for r in ans:
+        r.pop("_sa_instance_state", None)
+        for key, value in r.items():
+            if isinstance(value, UUID):
+                r[key] = str(value)
+            if isinstance(value, datetime):
+                r[key] = value.isoformat()
+    return JSONResponse(content={"applications": ans}, status_code=200)
