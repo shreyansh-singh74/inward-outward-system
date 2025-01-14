@@ -48,10 +48,9 @@ const items = [
   {
     title: "Logout",
     function: async () => {
-      const res = await fetch("/api/logout", {
+      await fetch("/api/logout", {
         method: "POST",
       });
-      console.log(res);
       router.navigate({ to: "/login" });
     },
     icon: Settings,

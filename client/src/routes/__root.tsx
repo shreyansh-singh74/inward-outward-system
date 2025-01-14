@@ -17,7 +17,6 @@ export const Route = createRootRoute({
   },
   component: function Component() {
     const data = useLoaderData({ from: "__root__" });
-    console.log(data);
     const setAtom = useSetAtom(userAtom);
     const location = useLocation();
     const navigate = useNavigate();

@@ -88,7 +88,6 @@ function RouteComponent() {
     setMyApplications(myApplications);
     setTurnInApplications(turnInApplications);
   }, [data, userData]);
-  console.log(myapplications);
   const acceptedCount = myapplications?.reduce(
     (acc, curr) => (curr.status === "accepted" ? acc + 1 : acc),
     0

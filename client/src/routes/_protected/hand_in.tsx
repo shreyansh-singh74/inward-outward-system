@@ -41,14 +41,12 @@ function RouteComponent() {
           )
         : null;
     if (searchQuery && turnInApplications) {
-      console.log(turnInApplications);
       turnInApplications = turnInApplications.filter((item: DocumentRecord) =>
         item.accept_reference_number?.includes(searchQuery.toLowerCase())
       );
     }
     setTurnInApplications(turnInApplications);
   }, [data, userData, searchQuery]);
-  console.log(turnInApplications);
   return (
     <div className="w-[100dvw] lg:w-[80dvw]">
       <h1 className="text-xl font-bold text-center mb-3">
