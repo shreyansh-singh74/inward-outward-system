@@ -397,6 +397,7 @@ async def verifyApplication(application_id, access_token: str = Cookie(None)):
                 content={"message": "Receiver not found"}, status_code=404
             )
         result.is_verified = True
+        result.status = ApplicationStatus.FORWARDED
         result.current_handler_id = UUID(str(receiver.id))
         newApplicationAction = ApplicationActions(
             from_user_id=user.id,

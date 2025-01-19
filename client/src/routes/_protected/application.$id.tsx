@@ -41,7 +41,7 @@ interface User {
 interface ApplicationAction {
   action_type: string;
   application_id: string;
-  comments: string | null;
+  comment: string | null;
   created_at: string;
   from_user: User;
   from_user_id: string;
