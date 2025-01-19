@@ -19,6 +19,9 @@ class UserRole(str, PyEnum):
     HOC = "hoc"
     CLERK = "clerk"
     SYSTEM_ADMIN = "system_admin"
+    VICE_PRINCIPAL = "vice_principal"
+    DEAN = "dean"
+    ASSOCIATE_DEAN = "associate_dean"
 
 
 class ApplicationStatus(str, PyEnum):

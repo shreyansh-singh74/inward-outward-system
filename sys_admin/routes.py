@@ -72,24 +72,3 @@ async def updateUserInfo(body: UpdateUser, access_token: str = Cookie(None)):
     return JSONResponse(
         content={"message": "User info updated successfully"}, status_code=201
     )
-
-
-@sys_admin_router.post("/make_admin")
-async def makeSystemAdmin(access_token: str = Cookie(None)):
-    decode = jwt.decode(access_token, JWT_SECRET, JWT_ALGORITHM)
-    if not decode:
-        return JSONResponse(
-            content={"message": "Unauthorized request"}, status_code=401
-        )
-    with Session(engine) as session:
-        statement = select(User).where(User.id == UUID(decode.get("sub")))
-        result = session.scalars(statement).first()
-        if not result:
-            return JSONResponse(
-                content={"message": "Unauthorized request"}, status_code=401
-            )
-        result.role = UserRole.SYSTEM_ADMIN
-        session.commit()
-    return JSONResponse(
-        content={"message": "Now you are system admin"}, status_code=201
-    )

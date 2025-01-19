@@ -8,6 +8,7 @@ import {
   useLoaderData,
   useNavigate,
 } from "@tanstack/react-router";
+import { useState } from "react";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { toast } from "sonner";
@@ -15,6 +16,13 @@ import { Card, CardContent, CardTitle, CardHeader } from "@/components/ui/card";
 import { CheckCircle, Clock, XCircle } from "lucide-react";
 import { formatDate } from "@/features/users/component/table";
 import { CircleSlash } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 export type DocumentRecord = {
   created_at: string; // ISO timestamp (e.g., "2024-12-15T11:37:29")
   created_by_id: string; // UUID of the user who created the record
@@ -68,10 +76,11 @@ function RouteComponent() {
   const data = useLoaderData({ from: "/_protected/" });
   const userData = useAtomValue(userAtom);
   const [myapplications, setMyApplications] = useAtom(myApplicationsAtom);
+  const [statusFilter, setStatusFilter] = useState("all");
   const setTurnInApplications = useSetAtom(turn_in_applicationAtom);
   const navigate = useNavigate();
   useEffect(() => {
-    const myApplications =
+    let myApplications =
       data.length > 0
         ? data?.filter(
             (document: DocumentRecord) =>
@@ -85,10 +94,15 @@ function RouteComponent() {
               document.current_handler_id === userData?.id
           )
         : null;
+    if (statusFilter !== "all" && myApplications) {
+      myApplications = myApplications.filter(
+        (item: DocumentRecord) =>
+          item.status.toLowerCase() === statusFilter.toLowerCase()
+      );
+    }
     setMyApplications(myApplications);
     setTurnInApplications(turnInApplications);
-  }, [data, userData]);
-  console.log(myapplications);
+  }, [data, userData, statusFilter]);
   const acceptedCount = myapplications?.reduce(
     (acc, curr) => (curr.status === "accepted" ? acc + 1 : acc),
     0
@@ -125,6 +139,21 @@ function RouteComponent() {
           </CardTitle>
           <CardContent className="text-center text-xl">Rejected</CardContent>
         </Card>
+      </div>
+      <div className="w-[90%] md:w-[50%] mx-auto my-6 space-y-4">
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="accepted">Approved</SelectItem>
+            <SelectItem value="incomplete">Incomplete</SelectItem>
+            <SelectItem value="forwarded">Forwarded</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       <div>
         <h1 className="text-xl font-bold text-center mb-3">Applications</h1>

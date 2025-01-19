@@ -1,4 +1,11 @@
-import { Calendar, Home, Inbox, Search, Settings } from "lucide-react";
+import {
+  Calendar,
+  Home,
+  Inbox,
+  Search,
+  Settings,
+  ChartNoAxesColumnIncreasing,
+} from "lucide-react";
 
 import {
   Sidebar,
@@ -15,6 +22,7 @@ import { userAtom } from "@/lib/atoms";
 import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { router } from "@/main";
+import Logo from "@/assets/tcet_logo_2.png";
 const items = [
   {
     title: "My applications",
@@ -45,13 +53,18 @@ const items = [
     icon: Search,
   },
   {
+    title: "Stats",
+    function: () => {
+      router.navigate({ to: "/stats" });
+    },
+    icon: ChartNoAxesColumnIncreasing,
+  },
+  {
     title: "Logout",
     function: async () => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const res = await fetch("/api/logout", {
+      await fetch("/api/logout", {
         method: "POST",
       });
-      console.log(res);
       router.navigate({ to: "/login" });
     },
     icon: Settings,
@@ -64,7 +77,7 @@ export function AppSidebar() {
   useEffect(() => {
     const authoritiesOption = items.filter((item) => item.title !== "User");
     const studentOption = authoritiesOption.filter(
-      (item) => item.title !== "Handed application"
+      (item) => item.title !== "Handed application" && item.title !== "Stats"
     );
     if (user?.role === "student") {
       setSideBarItems(studentOption);
@@ -79,7 +92,7 @@ export function AppSidebar() {
       <SidebarContent className="bg-[#d17a00] text-white">
         <SidebarGroup>
           <SidebarGroupLabel className="text-white flex flex-col mb-16">
-            <img src="/tcet_logo_2.png" />
+            <img src={Logo} />
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>

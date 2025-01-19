@@ -5,7 +5,6 @@ import {
   useLocation,
   useNavigate,
 } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 import { userAtom } from "@/lib/atoms";
 import { useSetAtom } from "jotai";
 import { Toaster } from "@/components/ui/sonner";
@@ -18,7 +17,6 @@ export const Route = createRootRoute({
   },
   component: function Component() {
     const data = useLoaderData({ from: "__root__" });
-    console.log(data);
     const setAtom = useSetAtom(userAtom);
     const location = useLocation();
     const navigate = useNavigate();
@@ -37,7 +35,6 @@ export const Route = createRootRoute({
     return (
       <>
         <Outlet />
-        <TanStackRouterDevtools />
         <Toaster />
       </>
     );

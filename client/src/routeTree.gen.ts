@@ -16,6 +16,7 @@ import { Route as AuthImport } from './routes/_auth'
 import { Route as ProtectedIndexImport } from './routes/_protected/index'
 import { Route as ProtectedUsersImport } from './routes/_protected/users'
 import { Route as ProtectedTurninImport } from './routes/_protected/turn_in'
+import { Route as ProtectedStatsImport } from './routes/_protected/stats'
 import { Route as ProtectedOtherapplicationImport } from './routes/_protected/other_application'
 import { Route as ProtectedHandinImport } from './routes/_protected/hand_in'
 import { Route as AuthSignupImport } from './routes/_auth/signup'
@@ -53,6 +54,12 @@ const ProtectedUsersRoute = ProtectedUsersImport.update({
 const ProtectedTurninRoute = ProtectedTurninImport.update({
   id: '/turn_in',
   path: '/turn_in',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+
+const ProtectedStatsRoute = ProtectedStatsImport.update({
+  id: '/stats',
+  path: '/stats',
   getParentRoute: () => ProtectedRoute,
 } as any)
 
@@ -156,6 +163,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedOtherapplicationImport
       parentRoute: typeof ProtectedImport
     }
+    '/_protected/stats': {
+      id: '/_protected/stats'
+      path: '/stats'
+      fullPath: '/stats'
+      preLoaderRoute: typeof ProtectedStatsImport
+      parentRoute: typeof ProtectedImport
+    }
     '/_protected/turn_in': {
       id: '/_protected/turn_in'
       path: '/turn_in'
@@ -234,6 +248,7 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 interface ProtectedRouteChildren {
   ProtectedHandinRoute: typeof ProtectedHandinRoute
   ProtectedOtherapplicationRoute: typeof ProtectedOtherapplicationRoute
+  ProtectedStatsRoute: typeof ProtectedStatsRoute
   ProtectedTurninRoute: typeof ProtectedTurninRoute
   ProtectedUsersRoute: typeof ProtectedUsersRoute
   ProtectedIndexRoute: typeof ProtectedIndexRoute
@@ -246,6 +261,7 @@ interface ProtectedRouteChildren {
 const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedHandinRoute: ProtectedHandinRoute,
   ProtectedOtherapplicationRoute: ProtectedOtherapplicationRoute,
+  ProtectedStatsRoute: ProtectedStatsRoute,
   ProtectedTurninRoute: ProtectedTurninRoute,
   ProtectedUsersRoute: ProtectedUsersRoute,
   ProtectedIndexRoute: ProtectedIndexRoute,
@@ -265,6 +281,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof AuthSignupRoute
   '/hand_in': typeof ProtectedHandinRoute
   '/other_application': typeof ProtectedOtherapplicationRoute
+  '/stats': typeof ProtectedStatsRoute
   '/turn_in': typeof ProtectedTurninRoute
   '/users': typeof ProtectedUsersRoute
   '/': typeof ProtectedIndexRoute
@@ -281,6 +298,7 @@ export interface FileRoutesByTo {
   '/signup': typeof AuthSignupRoute
   '/hand_in': typeof ProtectedHandinRoute
   '/other_application': typeof ProtectedOtherapplicationRoute
+  '/stats': typeof ProtectedStatsRoute
   '/turn_in': typeof ProtectedTurninRoute
   '/users': typeof ProtectedUsersRoute
   '/': typeof ProtectedIndexRoute
@@ -299,6 +317,7 @@ export interface FileRoutesById {
   '/_auth/signup': typeof AuthSignupRoute
   '/_protected/hand_in': typeof ProtectedHandinRoute
   '/_protected/other_application': typeof ProtectedOtherapplicationRoute
+  '/_protected/stats': typeof ProtectedStatsRoute
   '/_protected/turn_in': typeof ProtectedTurninRoute
   '/_protected/users': typeof ProtectedUsersRoute
   '/_protected/': typeof ProtectedIndexRoute
@@ -317,6 +336,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/hand_in'
     | '/other_application'
+    | '/stats'
     | '/turn_in'
     | '/users'
     | '/'
@@ -332,6 +352,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/hand_in'
     | '/other_application'
+    | '/stats'
     | '/turn_in'
     | '/users'
     | '/'
@@ -348,6 +369,7 @@ export interface FileRouteTypes {
     | '/_auth/signup'
     | '/_protected/hand_in'
     | '/_protected/other_application'
+    | '/_protected/stats'
     | '/_protected/turn_in'
     | '/_protected/users'
     | '/_protected/'
@@ -396,6 +418,7 @@ export const routeTree = rootRoute
       "children": [
         "/_protected/hand_in",
         "/_protected/other_application",
+        "/_protected/stats",
         "/_protected/turn_in",
         "/_protected/users",
         "/_protected/",
@@ -419,6 +442,10 @@ export const routeTree = rootRoute
     },
     "/_protected/other_application": {
       "filePath": "_protected/other_application.tsx",
+      "parent": "/_protected"
+    },
+    "/_protected/stats": {
+      "filePath": "_protected/stats.tsx",
       "parent": "/_protected"
     },
     "/_protected/turn_in": {

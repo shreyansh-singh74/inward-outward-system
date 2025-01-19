@@ -41,7 +41,7 @@ interface User {
 interface ApplicationAction {
   action_type: string;
   application_id: string;
-  comments: string | null;
+  comment: string | null;
   created_at: string;
   from_user: User;
   from_user_id: string;
@@ -96,10 +96,9 @@ function RouteComponent() {
     return;
   }
   const { application } = data as ApplicationDetailsProps;
-  console.log(application);
   const document_name = application.document?.split("/")[1];
   const handleClick = () => {
-    const url = `http://localhost:5173/api/documents/${document_name}`;
+    const url = `http://localhost:8000/api/documents/${document_name}`;
     window.open(url, "_blank");
   };
   const handleVerified = async () => {
@@ -235,19 +234,21 @@ function RouteComponent() {
             </Button>
           </CardFooter>
         ) : (
-          <CardFooter className="flex justify-between flex-col md:flex-row gap-4">
-            <IncompleteDialog id={id}>
-              <Button className="bg-blue-500 hover:bg-blue-600 w-full md:w-[45%]">
-                Incomplete
+          user.role === "CLERKS" && (
+            <CardFooter className="flex justify-between flex-col md:flex-row gap-4">
+              <IncompleteDialog id={id}>
+                <Button className="bg-blue-500 hover:bg-blue-600 w-full md:w-[45%]">
+                  Incomplete
+                </Button>
+              </IncompleteDialog>
+              <Button
+                className="bg-green-500 hover:bg-green-600 w-full md:w-[45%]"
+                onClick={() => handleVerified()}
+              >
+                Verified
               </Button>
-            </IncompleteDialog>
-            <Button
-              className="bg-green-500 hover:bg-green-600 w-full md:w-[45%]"
-              onClick={() => handleVerified()}
-            >
-              Verified
-            </Button>
-          </CardFooter>
+            </CardFooter>
+          )
         )}
       </Card>
     </div>

@@ -21,7 +21,6 @@ export const Route = createFileRoute("/_auth/verify/$token")({
 
 function RouteComponent() {
   const loaderData = useLoaderData({ from: "/_auth/verify/$token" });
-  console.log(loaderData);
   const navigate = useNavigate();
   if (loaderData?.message === "User is now Authorized") {
     navigate({ to: "/" });

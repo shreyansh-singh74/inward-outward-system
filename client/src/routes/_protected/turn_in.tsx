@@ -42,8 +42,8 @@ function RouteComponent() {
     form.reset();
   };
   return (
-    <div className="flex w-[80dvw] h-full flex-grow  justify-center items-center">
-      <Card className="p-4 w-[99%] md:w-[50%] mx-auto">
+    <div className="flex lg:w-[80dvw] h-full flex-grow  justify-center items-center">
+      <Card className="p-4 w-[90%] md:w-[50%] ">
         <CardTitle className="text-xl font-bold text-center">
           Insert Application
         </CardTitle>
@@ -55,7 +55,7 @@ function RouteComponent() {
                   options={turn_in_receivers}
                   label="For"
                   name="for_user"
-                  placeholder="Select whom you want to give this application"
+                  placeholder="Select Receiver"
                 />
                 <Input name="subject" label="Enter the subject" />
                 <TextArea
