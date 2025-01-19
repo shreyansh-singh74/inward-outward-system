@@ -72,7 +72,7 @@ async def createApplication(
     if document and document.filename:
         document_url = f"media/{document.filename}{uuid4()}"
         name, ext = document.filename.rsplit(".", 1)
-        unique_filename = f"{name}_{uuid4()}.{ext}"
+        unique_filename = f"{user.username}_{uuid4()}.{ext}"
         document_url = f"media/{unique_filename}"
         with open(document_url, "wb") as f:
             content = await document.read()
@@ -380,6 +380,69 @@ async def ForwardApplication(
     return JSONResponse(content={"message": "Application forwarded"}, status_code=200)
 
 
+@application_router.get("/get-stats/{some_id}")
+async def getStats(
+    access_token: str = Cookie(None),
+):
+    user = protectRoute(access_token)
+    if not isinstance(user, User):
+        return user
+    if user.role == UserRole.STUDENT:
+        return JSONResponse(
+            content={"message": "You are not authorized to view this page"},
+            status_code=401,
+        )
+    if user.role == "PRINCIPAL":
+        print("principal")
+        with Session(engine) as session:
+            statement = select(Applications)
+            result = session.scalars(statement).all()
+            stats = {}
+            for r in result:
+                date_str = r.created_at.date().isoformat()
+                if date_str not in stats:
+                    stats[date_str] = {
+                        "pending": 0,
+                        "accepted": 0,
+                        "rejected": 0,
+                    }
+                if r.status == ApplicationStatus.PENDING:
+                    stats[date_str]["pending"] += 1
+                elif r.status == ApplicationStatus.ACCEPTED:
+                    stats[date_str]["accepted"] += 1
+                else:
+                    stats[date_str]["rejected"] += 1
+            return JSONResponse(
+                content={"stats": stats},
+                status_code=200,
+            )
+    else:
+        with Session(engine) as session:
+            statement = select(Applications).where(
+                Applications.current_handler_id == UUID(str(user.id))
+            )
+            result = session.scalars(statement).all()
+            stats = {}
+            for r in result:
+                date_str = r.created_at.date().isoformat()
+                if date_str not in stats:
+                    stats[date_str] = {
+                        "pending": 0,
+                        "accepted": 0,
+                        "rejected": 0,
+                    }
+                if r.status == ApplicationStatus.PENDING:
+                    stats[date_str]["pending"] += 1
+                elif r.status == ApplicationStatus.ACCEPTED:
+                    stats[date_str]["accepted"] += 1
+                else:
+                    stats[date_str]["rejected"] += 1
+            return JSONResponse(
+                content={"stats": stats},
+                status_code=200,
+            )
+
+
 @application_router.post("/verify/{application_id}")
 async def verifyApplication(application_id, access_token: str = Cookie(None)):
     user = protectRoute(access_token)
@@ -483,34 +546,3 @@ async def updateApplication(
     return JSONResponse(
         content={"message": "Application updated successfully"}, status_code=200
     )
-
-
-@application_router.get("/get_all")
-async def getAllApplicationsForPrincipal(
-    access_token: str = Cookie(None),
-):
-    user = protectRoute(access_token)
-    if not isinstance(user, User):
-        return user
-    if user.role != UserRole.PRINCIPAL:
-        return JSONResponse(
-            content={"message": "You are not authorized to view this page"},
-            status_code=401,
-        )
-    user = protectRoute(access_token)
-    if not isinstance(user, User):
-        return user
-    with Session(engine) as session:
-        applications = select(Applications).where(
-            Applications.current_handler_id != user.id
-        )
-        result = session.scalars(applications).all()
-    ans = [r.__dict__ for r in result]
-    for r in ans:
-        r.pop("_sa_instance_state", None)
-        for key, value in r.items():
-            if isinstance(value, UUID):
-                r[key] = str(value)
-            if isinstance(value, datetime):
-                r[key] = value.isoformat()
-    return JSONResponse(content={"applications": ans}, status_code=200)

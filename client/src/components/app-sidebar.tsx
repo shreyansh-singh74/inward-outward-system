@@ -1,4 +1,11 @@
-import { Calendar, Home, Inbox, Search, Settings } from "lucide-react";
+import {
+  Calendar,
+  Home,
+  Inbox,
+  Search,
+  Settings,
+  ChartNoAxesColumnIncreasing,
+} from "lucide-react";
 
 import {
   Sidebar,
@@ -46,6 +53,13 @@ const items = [
     icon: Search,
   },
   {
+    title: "Stats",
+    function: () => {
+      router.navigate({ to: "/stats" });
+    },
+    icon: ChartNoAxesColumnIncreasing,
+  },
+  {
     title: "Logout",
     function: async () => {
       await fetch("/api/logout", {
@@ -63,24 +77,14 @@ export function AppSidebar() {
   useEffect(() => {
     const authoritiesOption = items.filter((item) => item.title !== "User");
     const studentOption = authoritiesOption.filter(
-      (item) => item.title !== "Handed application"
+      (item) => item.title !== "Handed application" && item.title !== "Stats"
     );
-    // const principalOption = {
-    //   title: "Other_application",
-    //   function: () => {
-    //     router.navigate({ to: "/other_application" });
-    //   },
-    //   icon: Search,
-    // };
     if (user?.role === "student") {
       setSideBarItems(studentOption);
     } else if (user?.role === "system_admin") {
       setSideBarItems(items);
     } else {
       setSideBarItems(authoritiesOption);
-      // if (user?.role === "PRINCIPAL") {
-      //   setSideBarItems([...authoritiesOption, principalOption]);
-      // }
     }
   }, [user]);
   return (
