@@ -32,7 +32,7 @@ const items = [
     icon: Home,
   },
   {
-    title: "Turn in",
+    title: "New Application",
     function: () => {
       router.navigate({ to: "/turn_in" });
     },
