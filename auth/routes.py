@@ -50,10 +50,29 @@ async def signup(user: SignUpSchema):
         session.commit()
     link = f"http://{os.getenv("CLIENT_URL")}/verify/{token}"
 
-    html = f"""
-    <h1>Verify your Email</h1>
-    <p>Please click this <a href="{link}">link</a> to verify your email</p>
-    """
+    html = f"""<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Email Verification</title>
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+            <div style="margin-bottom: 24px; text-align: center;">
+                <img src="/api/placeholder/120/40" alt="Company Logo" style="max-width: 120px;">
+            </div>
+            <h1 style="color: #2c5282; font-size: 24px; font-weight: 600; margin-bottom: 16px;">Verify Your Email Address</h1>
+            <p style="margin-bottom: 20px;">Thank you for creating an account. To complete your registration, please verify your email address by clicking the button below.</p>
+
+            <a href="{link}" style="display: inline-block; background-color: #3182ce; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500; margin: 20px 0;">Verify Email Address</a>
+
+            <p style="margin-top: 24px; font-size: 14px; color: #666;">
+                If you didn't create an account, you can safely ignore this email. This verification link will expire in 5 minute for security purposes.
+            </p>
+        </div>
+    </body>
+    </html>"""
     subject = "Verify Your email"
     emails = [user.email]
     await create_message(emails, subject, html)
@@ -118,10 +137,26 @@ async def login(body: LoginSchema, response: Response):
         session.add(newVerificationToken)
         session.commit()
     link = f"http://{os.getenv("CLIENT_URL")}/verify/{token}"
-    html = f"""
-    <h1>Sign In Link</h1>
-    <p>Please click this <a href="{link}">link</a> to Sign in your account</p>
-    """
+    html = f"""<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Account Access</title>
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+            <h1 style="color: #2c5282; font-size: 24px; font-weight: 600; margin-bottom: 16px;">Welcome Back</h1>
+            <p>Thank you for using our service. To access your account, please click the secure link below.</p>
+
+            <a href="{link}" style="display: inline-block; background-color: #3182ce; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500; margin: 20px 0;">Sign In to Your Account</a>
+
+            <p style="margin-top: 24px; font-size: 14px; color: #666;">
+                If you did not request this sign-in link, please disregard this email. For security reasons, this link will expire in 5 minutes
+            </p>
+        </div>
+    </body>
+    </html>"""
     subject = "Verify Your email"
     emails = [body.email]
     await create_message(emails, subject, html)
