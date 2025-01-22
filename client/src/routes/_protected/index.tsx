@@ -76,6 +76,8 @@ function RouteComponent() {
   const data = useLoaderData({ from: "/_protected/" });
   const userData = useAtomValue(userAtom);
   const [myapplications, setMyApplications] = useAtom(myApplicationsAtom);
+  const [myTotalApplication, setMyTotalApplication] =
+    useState<[{ status: string }]>();
   const [statusFilter, setStatusFilter] = useState("all");
   const setTurnInApplications = useSetAtom(turn_in_applicationAtom);
   const navigate = useNavigate();
@@ -94,6 +96,7 @@ function RouteComponent() {
               document.current_handler_id === userData?.id
           )
         : null;
+    setMyTotalApplication(myApplications);
     if (statusFilter !== "all" && myApplications) {
       myApplications = myApplications.filter(
         (item: DocumentRecord) =>
@@ -103,15 +106,15 @@ function RouteComponent() {
     setMyApplications(myApplications);
     setTurnInApplications(turnInApplications);
   }, [data, userData, statusFilter]);
-  const acceptedCount = myapplications?.reduce(
+  const acceptedCount = myTotalApplication?.reduce(
     (acc, curr) => (curr.status === "accepted" ? acc + 1 : acc),
     0
   );
-  const pendingCount = myapplications?.reduce(
+  const pendingCount = myTotalApplication?.reduce(
     (acc, curr) => (curr.status === "pending" ? acc + 1 : acc),
     0
   );
-  const rejectedCount = myapplications?.reduce(
+  const rejectedCount = myTotalApplication?.reduce(
     (acc, curr) => (curr.status === "rejected" ? acc + 1 : acc),
     0
   );
