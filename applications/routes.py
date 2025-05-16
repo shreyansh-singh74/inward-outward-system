@@ -79,13 +79,16 @@ async def createApplication(
             f.write(content)
     receiver_email = None
     with Session(engine) as session:
-        statement = select(User).where(User.role == "CLERKS")
-        receiver = session.scalars(statement).one()
-        receiver_email = receiver.tcet_email
+        statement = select(User).where(User.role == "clerk")
+        receiver = session.scalars(statement).first()
+        
         if not receiver:
             return JSONResponse(
-                content={"message": "Receiver not found"}, status_code=404
+                content={"message": "No clerk found to handle the application. Please contact system administrator."}, 
+                status_code=404
             )
+            
+        receiver_email = receiver.tcet_email
         application_id = uuid4()
         newApplication = Applications.create_with_counter(
             session=session,
