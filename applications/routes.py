@@ -36,8 +36,19 @@ application_router = APIRouter()
 
 
 def protectRoute(access_token: str):
+    if not access_token:
+        return JSONResponse(
+            content={"message": "Unauthorized request"}, status_code=401
+        )
+        
     try:
-        decode = jwt.decode(access_token, JWT_SECRET, JWT_ALGORITHM)
+        # Convert string token to bytes if necessary
+        if isinstance(access_token, str):
+            token_bytes = access_token.encode('utf-8')
+        else:
+            token_bytes = access_token
+            
+        decode = jwt.decode(access_token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         if not decode:
             return JSONResponse(
                 content={"message": "Unauthorized request"}, status_code=401
@@ -51,7 +62,7 @@ def protectRoute(access_token: str):
                 )
             return result
     except Exception as e:
-        print(e)
+        print(f"Token error: {e}")
         return JSONResponse(
             content={"message": "Unauthorized request"}, status_code=401
         )

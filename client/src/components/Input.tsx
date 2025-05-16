@@ -7,16 +7,22 @@ import {
   FormMessage,
 } from "./ui/form";
 import { useFormContext } from "react-hook-form";
+
 export const Input = ({
   label,
   name,
   type = "text",
+  placeholder,
+  maxLength,
 }: {
   label: string;
   name: string;
   type?: string;
+  placeholder?: string;
+  maxLength?: number;
 }) => {
   const form = useFormContext();
+
   return (
     <FormField
       control={form.control}
@@ -35,9 +41,10 @@ export const Input = ({
               />
             ) : (
               <ShadCnInput
-                placeholder={`Enter the ${label}`}
                 {...field}
                 type={type}
+                placeholder={placeholder || `Enter the ${label}`}
+                maxLength={maxLength}
               />
             )}
           </FormControl>

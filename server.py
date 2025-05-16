@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Cookie, HTTPException, Request
+from fastapi import FastAPI, Cookie, HTTPException, Request, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from auth.routes import authRouter
 from fastapi.responses import FileResponse
@@ -10,10 +10,38 @@ from fastapi.responses import JSONResponse
 from datetime import datetime
 from uuid import UUID
 import os
+import asyncio
+from auth.utils import cleanup_expired_data
 
 app = FastAPI()
 
 Base.metadata.create_all(engine)
+
+# Background task for cleanup
+cleanup_task = None
+
+@app.on_event("startup")
+async def startup_event():
+    global cleanup_task
+    cleanup_task = asyncio.create_task(cleanup_background_task())
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    if cleanup_task:
+        cleanup_task.cancel()
+        try:
+            await cleanup_task
+        except asyncio.CancelledError:
+            pass
+
+async def cleanup_background_task():
+    """Run cleanup task in the background every 5 minutes"""
+    while True:
+        try:
+            cleanup_expired_data()
+        except Exception as e:
+            print(f"Error in cleanup task: {str(e)}")
+        await asyncio.sleep(300)  # 5 minutes
 
 
 @app.get("/api/authenticate")

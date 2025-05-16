@@ -1,16 +1,18 @@
 from .schema import (
     SignUpSchema,
     LoginSchema,
+    OTPVerificationSchema,
+    ResendOTPSchema,
 )
 import bcrypt
 from sqlalchemy import Select as select
 from sqlalchemy.orm import Session
 from db.models import User, VerificationToken
-from fastapi import APIRouter, status, Response
+from fastapi import APIRouter, status, Response, Cookie, Request
 from config import engine, ACCESS_TOKEN_EXPIRY, create_access_token
 from datetime import timedelta
 from mail import create_message
-from .utils import create_url_safe_token, decode_url_safe_token
+from .utils import generate_otp, store_otp, verify_otp, can_send_new_otp, store_user_registration_data, get_user_registration_data
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import HTTPException
 from db.models import UserRole
@@ -26,30 +28,32 @@ authRouter = APIRouter()
 
 @authRouter.post("/signup")
 async def signup(user: SignUpSchema):
+    """First step of signup - generate and send OTP"""
+    # Check if user already exists
     with Session(engine) as session:
         statement = select(User).where(User.tcet_email == user.email)
         results = session.scalars(statement).first()
         if results:
-            return {"message": "User already exists"}
-    newUserId = uuid4()
-    newUser = User(
-        id=newUserId,
-        tcet_email=user.email,
-        username=user.name,
-        role=UserRole.STUDENT,
-        department=user.department,
-    )
-    token = create_url_safe_token({"email": user.email})
-    newVerificationToken = VerificationToken(
-        user_id=newUserId,
-        token=token,
-    )
-    with Session(engine) as session:
-        session.add(newUser)
-        session.add(newVerificationToken)
-        session.commit()
-    link = f"http://{os.getenv("CLIENT_URL")}/verify/{token}"
-
+            return JSONResponse(
+                content={"message": "User already exists"},
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+    
+    # Check if we can send a new OTP (rate limiting)
+    if not can_send_new_otp(user.email):
+        return JSONResponse(
+            content={"message": "Please wait before requesting a new OTP"},
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+        )
+    
+    # Store user registration data temporarily
+    store_user_registration_data(user.email, user.name, user.department)
+    
+    # Generate OTP
+    otp = generate_otp()
+    store_otp(user.email, otp)
+    
+    # Send OTP via email
     html = f"""<!DOCTYPE html>
     <html lang="en">
     <head>
@@ -59,109 +63,284 @@ async def signup(user: SignUpSchema):
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
-            <div style="margin-bottom: 24px; text-align: center;">
-                <img src="/api/placeholder/120/40" alt="Company Logo" style="max-width: 120px;">
-            </div>
             <h1 style="color: #2c5282; font-size: 24px; font-weight: 600; margin-bottom: 16px;">Verify Your Email Address</h1>
-            <p style="margin-bottom: 20px;">Thank you for creating an account. To complete your registration, please verify your email address by clicking the button below.</p>
+            <p style="margin-bottom: 20px;">Thank you for creating an account. To complete your registration, please use the following OTP code:</p>
 
-            <a href="{link}" style="display: inline-block; background-color: #3182ce; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500; margin: 20px 0;">Verify Email Address</a>
+            <div style="background-color: #EDF2F7; padding: 16px; border-radius: 4px; text-align: center; font-size: 24px; letter-spacing: 4px; font-weight: bold; margin: 20px 0;">
+                {otp}
+            </div>
 
             <p style="margin-top: 24px; font-size: 14px; color: #666;">
-                If you didn't create an account, you can safely ignore this email. This verification link will expire in 5 minute for security purposes.
+                This OTP will expire in 5 minutes for security purposes. If you didn't create an account, you can safely ignore this email.
             </p>
         </div>
     </body>
     </html>"""
-    subject = "Verify Your email"
+    
+    subject = "Your OTP for Account Verification"
     emails = [user.email]
     await create_message(emails, subject, html)
-    return {"message": "User created successfully"}
+    
+    return JSONResponse(
+        content={"message": "OTP sent to your email"},
+        status_code=status.HTTP_200_OK
+    )
 
 
-@authRouter.post("/verify/{token}")
-async def verify_user_account(token: str):
-    token_data = decode_url_safe_token(token)
-    user_email = token_data.get("email")
-    if user_email:
-        with Session(engine) as session:
-            stmt = select(User).where(User.tcet_email == user_email)
-            statement = select(VerificationToken).where(
-                VerificationToken.token == str(token)
+@authRouter.post("/verify-otp/signup")
+async def verify_signup_otp(verification: OTPVerificationSchema):
+    """Second step of signup - verify OTP and create user"""
+    # Verify the OTP
+    if not verify_otp(verification.email, verification.otp):
+        return JSONResponse(
+            content={"message": "Invalid or expired OTP"},
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Retrieve stored user registration data
+    user_data = get_user_registration_data(verification.email)
+    if not user_data:
+        return JSONResponse(
+            content={"message": "Registration session expired. Please try signing up again."},
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Create the user
+    newUserId = uuid4()
+    newUser = User(
+        id=newUserId,
+        tcet_email=verification.email,
+        username=user_data['name'],
+        role=UserRole.STUDENT,
+        department=user_data['department'],
+        isEmailVerified=True  # Mark as verified immediately
+    )
+    
+    # Save to database
+    with Session(engine) as session:
+        statement = select(User).where(User.tcet_email == verification.email)
+        existing_user = session.scalars(statement).first()
+        
+        if existing_user:
+            return JSONResponse(
+                content={"message": "User already exists"},
+                status_code=status.HTTP_400_BAD_REQUEST
             )
-            result = session.scalars(stmt).first()
-            if not result:
-                return JSONResponse({"message": "User not found"}, 401)
-            token_result = session.scalars(statement).first()
-            if not token_result:
-                return JSONResponse({"message": "Invalid token"}, status_code=401)
-            if token_result.expiry < datetime.now(timezone.utc).replace(tzinfo=None):
-                return JSONResponse({"message": "Token expired"}, status_code=401)
-            result.isEmailVerified = True
-            session.commit()
-            response = JSONResponse(
-                content={"message": "User is now Authorized"},
-                status_code=status.HTTP_200_OK,
-            )
-            access_token = create_access_token(
-                data={"sub": str(result.id)},
-            )
-            response.set_cookie(
-                key="access_token",
-                value=access_token,
-                max_age=3600 * 24 * 10,
-                httponly=True,
-                secure=False,
-            )
-        return response
-    return JSONResponse({"message": "Invalid token"}, 401)
+        
+        session.add(newUser)
+        session.commit()
+    
+    # Create and return JWT token
+    access_token = create_access_token(
+        data={"sub": str(newUserId)},
+    )
+    
+    response = JSONResponse(
+        content={"message": "User created successfully"},
+        status_code=status.HTTP_201_CREATED
+    )
+    
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        max_age=3600 * 24 * 10,  # 10 days
+        httponly=True,
+        secure=False,  # Set to True in production with HTTPS
+        samesite="lax"
+    )
+    
+    return response
 
 
 @authRouter.post("/login")
-async def login(body: LoginSchema, response: Response):
+async def login(body: LoginSchema):
+    """First step of login - check user and send OTP"""
     with Session(engine) as session:
         statement = select(User).where(User.tcet_email == body.email)
-        results = session.scalars(statement).first()
-        if not results:
+        user = session.scalars(statement).first()
+        if not user:
             return JSONResponse(
-                content={"message": "Invalid Credentials"}, status_code=401
+                content={"message": "Invalid Credentials"},
+                status_code=status.HTTP_401_UNAUTHORIZED
             )
-    if not results.isEmailVerified:
-        return JSONResponse({"message": "Email not verified"}, 401)
-    token = create_url_safe_token({"email": body.email})
-    newVerificationToken = VerificationToken(
-        user_id=results.id,
-        token=token,
-    )
-    with Session(engine) as session:
-        session.add(newVerificationToken)
-        session.commit()
-    link = f"http://{os.getenv("CLIENT_URL")}/verify/{token}"
+        
+        if not user.isEmailVerified:
+            return JSONResponse(
+                content={"message": "Email not verified"},
+                status_code=status.HTTP_401_UNAUTHORIZED
+            )
+    
+    # Check if we can send a new OTP (rate limiting)
+    if not can_send_new_otp(body.email):
+        return JSONResponse(
+            content={"message": "Please wait before requesting a new OTP"},
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+        )
+    
+    # Generate OTP
+    otp = generate_otp()
+    store_otp(body.email, otp)
+    
+    # Send OTP via email
     html = f"""<!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Account Access</title>
+        <title>Login OTP</title>
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
-            <h1 style="color: #2c5282; font-size: 24px; font-weight: 600; margin-bottom: 16px;">Welcome Back</h1>
-            <p>Thank you for using our service. To access your account, please click the secure link below.</p>
+            <h1 style="color: #2c5282; font-size: 24px; font-weight: 600; margin-bottom: 16px;">Your Login OTP</h1>
+            <p style="margin-bottom: 20px;">Please use the following OTP to log in to your account:</p>
 
-            <a href="{link}" style="display: inline-block; background-color: #3182ce; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500; margin: 20px 0;">Sign In to Your Account</a>
+            <div style="background-color: #EDF2F7; padding: 16px; border-radius: 4px; text-align: center; font-size: 24px; letter-spacing: 4px; font-weight: bold; margin: 20px 0;">
+                {otp}
+            </div>
 
             <p style="margin-top: 24px; font-size: 14px; color: #666;">
-                If you did not request this sign-in link, please disregard this email. For security reasons, this link will expire in 5 minutes
+                This OTP will expire in 5 minutes for security purposes. If you didn't request this OTP, please ignore this email.
             </p>
         </div>
     </body>
     </html>"""
-    subject = "Verify Your email"
+    
+    subject = "Your Login OTP"
     emails = [body.email]
     await create_message(emails, subject, html)
-    response = JSONResponse(
-        content={"message": "Login email is set to your email"},
-        status_code=200,
+    
+    return JSONResponse(
+        content={"message": "OTP sent to your email"},
+        status_code=status.HTTP_200_OK
     )
+
+
+@authRouter.post("/verify-otp/login")
+async def verify_login_otp(verification: OTPVerificationSchema):
+    """Second step of login - verify OTP and issue JWT"""
+    # Verify the OTP
+    if not verify_otp(verification.email, verification.otp):
+        return JSONResponse(
+            content={"message": "Invalid or expired OTP"},
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Get user from database
+    with Session(engine) as session:
+        statement = select(User).where(User.tcet_email == verification.email)
+        user = session.scalars(statement).first()
+        
+        if not user:
+            return JSONResponse(
+                content={"message": "User not found"},
+                status_code=status.HTTP_401_UNAUTHORIZED
+            )
+    
+    # Create access token
+    access_token = create_access_token(
+        data={"sub": str(user.id)},
+    )
+    
+    response = JSONResponse(
+        content={"message": "Login successful"},
+        status_code=status.HTTP_200_OK
+    )
+    
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        max_age=3600 * 24 * 10,  # 10 days
+        httponly=True,
+        secure=False,  # Set to True in production with HTTPS
+        samesite="lax"
+    )
+    
     return response
+
+
+@authRouter.post("/resend-otp")
+async def resend_otp(body: ResendOTPSchema):
+    """Resend OTP to user's email"""
+    # Check if user exists
+    with Session(engine) as session:
+        statement = select(User).where(User.tcet_email == body.email)
+        user = session.scalars(statement).first()
+        
+        # For security reasons, always return success even if user doesn't exist
+        if not user:
+            return JSONResponse(
+                content={"message": "If your email is registered, an OTP has been sent"},
+                status_code=status.HTTP_200_OK
+            )
+    
+    # Check if we can send a new OTP (rate limiting)
+    if not can_send_new_otp(body.email):
+        return JSONResponse(
+            content={"message": "Please wait before requesting a new OTP"},
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+        )
+    
+    # Generate OTP
+    otp = generate_otp()
+    store_otp(body.email, otp)
+    
+    # Send OTP via email
+    html = f"""<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Resend OTP</title>
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+            <h1 style="color: #2c5282; font-size: 24px; font-weight: 600; margin-bottom: 16px;">Your New OTP</h1>
+            <p style="margin-bottom: 20px;">Here is your new OTP code:</p>
+
+            <div style="background-color: #EDF2F7; padding: 16px; border-radius: 4px; text-align: center; font-size: 24px; letter-spacing: 4px; font-weight: bold; margin: 20px 0;">
+                {otp}
+            </div>
+
+            <p style="margin-top: 24px; font-size: 14px; color: #666;">
+                This OTP will expire in 5 minutes for security purposes.
+            </p>
+        </div>
+    </body>
+    </html>"""
+    
+    subject = "Your New OTP"
+    emails = [body.email]
+    await create_message(emails, subject, html)
+    
+    return JSONResponse(
+        content={"message": "If your email is registered, an OTP has been sent"},
+        status_code=status.HTTP_200_OK
+    )
+
+
+@authRouter.post("/logout")
+async def logout():
+    """Logout user by clearing the JWT cookie"""
+    response = JSONResponse(
+        content={"message": "Logged out successfully"},
+        status_code=status.HTTP_200_OK
+    )
+    
+    response.delete_cookie(
+        key="access_token",
+        httponly=True,
+        secure=False,  # Set to True in production with HTTPS
+        samesite="lax"
+    )
+    
+    return response
+
+
+# Keep this for backward compatibility, but it will be removed in future
+@authRouter.post("/verify/{token}")
+async def verify_user_account(token: str):
+    """Legacy endpoint for backward compatibility"""
+    return JSONResponse(
+        content={"message": "This endpoint is deprecated. Please use the new OTP-based authentication."},
+        status_code=status.HTTP_410_GONE
+    )

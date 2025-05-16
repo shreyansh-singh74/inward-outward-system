@@ -8,6 +8,12 @@ export const SignupSchema = z.object({
 export const LoginSchema = z.object({
   email: z.string().email(),
 });
+
+export const OTPVerificationSchema = z.object({
+  email: z.string().email(),
+  otp: z.string().length(6, { message: "OTP must be 6 digits" }),
+});
+
 export const UpdateUserSchema = z.object({
   role: z.string(),
   department: z.string(),
@@ -30,6 +36,7 @@ export const forwardApplicationSchema = z.object({
 });
 export type LoginType = z.infer<typeof LoginSchema>;
 export type SignUpType = z.infer<typeof SignupSchema>;
+export type OTPVerificationType = z.infer<typeof OTPVerificationSchema>;
 export type UpdateUserType = z.infer<typeof UpdateUserSchema>;
 export type createApplicationType = z.infer<typeof createApplicationSchema>;
 export type forwardApplicationType = z.infer<typeof forwardApplicationSchema>;
