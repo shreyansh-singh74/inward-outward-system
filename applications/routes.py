@@ -1,6 +1,6 @@
 from fastapi.responses import JSONResponse
 from fastapi import UploadFile, File, Form
-from sqlalchemy import Select as select
+from sqlalchemy import Select as select, func
 from sqlalchemy.orm import Session
 from db.models import User
 from fastapi import APIRouter, Cookie
@@ -84,13 +84,14 @@ async def createApplication(
         document_url = f"media/{document.filename}{uuid4()}"
         name, ext = document.filename.rsplit(".", 1)
         unique_filename = f"{user.username}_{uuid4()}.{ext}"
+        os.makedirs("media", exist_ok=True)
         document_url = f"media/{unique_filename}"
         with open(document_url, "wb") as f:
             content = await document.read()
             f.write(content)
     receiver_email = None
     with Session(engine) as session:
-        statement = select(User).where(User.role == "clerk")
+        statement = select(User).where(func.lower(User.role).in_(["clerk", "clerks"]))
         receiver = session.scalars(statement).first()
         
         if not receiver:
@@ -117,14 +118,15 @@ async def createApplication(
             application_id=newApplication.id,
             action_type="INWARD",
         )
-        newDocument = SupportingDocuments(
-            application_id=application_id,
-            document_name=document.filename,
-            document_url=document_url,
-        )
+        if document and document.filename:
+            newDocument = SupportingDocuments(
+                application_id=application_id,
+                document_name=document.filename,
+                document_url=document_url,
+            )
+            session.add(newDocument)
         session.add(newApplication)
         session.add(newApplicationAction)
-        session.add(newDocument)
         session.commit()
         link = f"http://{os.getenv("CLIENT_URL")}/application/{application_id}"
         html_message = f"""
@@ -133,7 +135,10 @@ async def createApplication(
         """
         subject = "please check this application"
         if receiver_email:
-            await create_message([receiver.tcet_email], subject, html_message)
+            try:
+                await create_message([receiver.tcet_email], subject, html_message)
+            except Exception as e:
+                print(f"Failed to send email notification: {e}")
     return JSONResponse(content={"message": "Application created"}, status_code=200)
 
 
@@ -365,7 +370,8 @@ async def ForwardApplication(
             )
 
         statement = select(User).where(
-            User.role == body.role and User.department == body.department
+            func.lower(User.role) == func.lower(body.role),
+            func.lower(User.department) == func.lower(body.department),
         )
         receiver = session.scalars(statement).first()
         if not receiver:
@@ -390,7 +396,10 @@ async def ForwardApplication(
         """
         subject = "please check this application"
         if receiver.tcet_email:
-            await create_message([receiver.tcet_email], subject, html_message)
+            try:
+                await create_message([receiver.tcet_email], subject, html_message)
+            except Exception as e:
+                print(f"Failed to send forward notification email: {e}")
     return JSONResponse(content={"message": "Application forwarded"}, status_code=200)
 
 
