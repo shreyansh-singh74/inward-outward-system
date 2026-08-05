@@ -86,12 +86,22 @@ MEDIA_DIR = "media"
 
 
 @app.get("/api/documents/{filename}")
-async def get_document(filename: str):
-    file_path = os.path.join(MEDIA_DIR, filename)
+async def get_document(filename: str, access_token: str = Cookie(None)):
+    user = protectRoute(access_token=access_token)
+    if not isinstance(user, User):
+        return JSONResponse(
+            content={"error": "user is not authenticated"}, status_code=401
+        )
+
+    safe_filename = os.path.basename(filename)
+    media_root = os.path.abspath(MEDIA_DIR)
+    file_path = os.path.abspath(os.path.join(media_root, safe_filename))
+    if not safe_filename or os.path.commonpath([media_root, file_path]) != media_root:
+        return JSONResponse(content={"error": "Forbidden"}, status_code=403)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(
-        file_path, media_type="application/octet-stream", filename=filename
+        file_path, media_type="application/octet-stream", filename=safe_filename
     )
 
 

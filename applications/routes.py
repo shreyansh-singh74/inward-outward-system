@@ -35,6 +35,11 @@ load_dotenv()
 application_router = APIRouter()
 
 
+def _safe_extension(filename: str) -> str:
+    ext = filename.rsplit(".", 1)[-1] if "." in filename else ""
+    return "".join(c for c in ext if c.isalnum()).lower() or "bin"
+
+
 def protectRoute(access_token: str):
     if not access_token:
         return JSONResponse(
@@ -81,10 +86,9 @@ async def createApplication(
         return user
     document_url = None
     if document and document.filename:
-        document_url = f"media/{document.filename}{uuid4()}"
-        name, ext = document.filename.rsplit(".", 1)
-        unique_filename = f"{user.username}_{uuid4()}.{ext}"
         os.makedirs("media", exist_ok=True)
+        ext = _safe_extension(document.filename)
+        unique_filename = f"{uuid4()}.{ext}"
         document_url = f"media/{unique_filename}"
         with open(document_url, "wb") as f:
             content = await document.read()
@@ -545,8 +549,9 @@ async def updateApplication(
                 session.delete(existing_document)
 
             # Save the new document
-            name, ext = document.filename.rsplit(".", 1)
-            unique_filename = f"{name}_{uuid4()}.{ext}"
+            os.makedirs("media", exist_ok=True)
+            ext = _safe_extension(document.filename)
+            unique_filename = f"{uuid4()}.{ext}"
             document_url = f"media/{unique_filename}"
             with open(document_url, "wb") as f:
                 content = await document.read()
