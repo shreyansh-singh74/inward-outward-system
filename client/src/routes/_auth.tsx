@@ -7,8 +7,8 @@ export const Route = createFileRoute("/_auth")({
 function RouteComponent() {
   return (
     <div className="w-full h-screen flex flex-col items-center">
-      <nav className="flex bg-[#d17a00] w-full justify-between items-center py-2 px-3">
-        <img src={Logo} />
+      <nav className="flex bg-[#d17a00] w-full justify-center items-center py-2 px-3 gap-10">
+        <img src={Logo} className="h-12 w-auto object-contain" alt="TCET Logo" />
         <h1 className="text-xl text-center text-[#ffffff]">
           INWARD OUTWARD SYSTEM
         </h1>

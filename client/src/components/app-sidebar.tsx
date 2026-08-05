@@ -91,8 +91,8 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarContent className="bg-[#d17a00] text-white">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-white flex flex-col mb-16">
-            <img src={Logo} />
+          <SidebarGroupLabel className="text-white flex flex-col mb-16 h-auto group-data-[collapsible=icon]:hidden">
+            <img src={Logo} className="h-20 w-auto object-contain" alt="TCET Logo" />
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
