@@ -128,7 +128,7 @@ async def createApplication(
         session.add(newApplication)
         session.add(newApplicationAction)
         session.commit()
-        link = f"http://{os.getenv("CLIENT_URL")}/application/{application_id}"
+        link = f"http://{os.getenv('CLIENT_URL')}/application/{application_id}"
         html_message = f"""
         <h1>Application is Inwarded</h1>
         <p>Click here to see application <a href="{link}">link</a></p>
@@ -389,7 +389,7 @@ async def ForwardApplication(
         )
         session.add(newApplicationAction)
         session.commit()
-        link = f"http://{os.getenv("CLIENT_URL")}/application/{application_id}"
+        link = f"http://{os.getenv('CLIENT_URL')}/application/{application_id}"
         html_message = f"""
         <h1>Application is Forwarded</h1>
         <p>Click here to see application <a href="{link}">link</a></p>

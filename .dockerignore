@@ -1,0 +1,15 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+.git/
+.gitignore
+media/
+.env
+node_modules/
+**/node_modules/
+client/dist/
+static/dist/
+Dockerfile
+docker-compose.yml
+.dockerignore

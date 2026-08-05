@@ -1,0 +1,42 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: inward-outward-db
+    restart: unless-stopped
+    environment:
+      # Raw password (as typed), used by the MySQL container.
+      # Keep DB_ROOT_PASSWORD_URL below URL-encoded to match this.
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-tcet@1234}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-turn_in_turn_out}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-tcet@1234}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: .
+    container_name: inward-outward-web
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      # db hostname is the service name, not localhost. Password must be URL-encoded
+      # (e.g. tcet@1234 -> tcet%401234). Tables are auto-created on startup.
+      DB_URL: mysql+mysqlconnector://root:${DB_ROOT_PASSWORD_URL:-tcet%401234}@db:3306/${MYSQL_DATABASE:-turn_in_turn_out}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:8000}
+    ports:
+      - "8000:8000"
+    volumes:
+      - media_data:/app/media
+
+volumes:
+  mysql_data:
+  media_data:
