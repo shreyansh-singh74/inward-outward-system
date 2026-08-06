@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from db.models import User
 from fastapi import APIRouter, Cookie
 import jwt
-from config import JWT_SECRET, JWT_ALGORITHM, engine
+from config import JWT_SECRET, JWT_ALGORITHM, engine, ALLOWED_EXTENSIONS, MAX_UPLOAD_SIZE_MB
 from uuid import UUID
 from db.models import (
     Applications,
@@ -47,12 +47,6 @@ def protectRoute(access_token: str):
         )
         
     try:
-        # Convert string token to bytes if necessary
-        if isinstance(access_token, str):
-            token_bytes = access_token.encode('utf-8')
-        else:
-            token_bytes = access_token
-            
         decode = jwt.decode(access_token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         if not decode:
             return JSONResponse(
@@ -73,6 +67,7 @@ def protectRoute(access_token: str):
         )
 
 
+
 @application_router.post("/create")
 async def createApplication(
     document: UploadFile = File(None),
@@ -86,13 +81,30 @@ async def createApplication(
         return user
     document_url = None
     if document and document.filename:
-        os.makedirs("media", exist_ok=True)
         ext = _safe_extension(document.filename)
+        if ext not in ALLOWED_EXTENSIONS:
+            return JSONResponse(
+                content={"message": f"File extension '.{ext}' is not allowed"}, status_code=400
+            )
+        os.makedirs("media", exist_ok=True)
         unique_filename = f"{uuid4()}.{ext}"
         document_url = f"media/{unique_filename}"
+        
+        max_bytes = MAX_UPLOAD_SIZE_MB * 1024 * 1024
+        total_size = 0
         with open(document_url, "wb") as f:
-            content = await document.read()
-            f.write(content)
+            while chunk := await document.read(1024 * 1024):  # 1MB chunks
+                total_size += len(chunk)
+                if total_size > max_bytes:
+                    f.close()
+                    if os.path.exists(document_url):
+                        os.remove(document_url)
+                    return JSONResponse(
+                        content={"message": f"File size exceeds maximum allowed ({MAX_UPLOAD_SIZE_MB}MB)"},
+                        status_code=400
+                    )
+                f.write(chunk)
+
     receiver_email = None
     with Session(engine) as session:
         statement = select(User).where(func.lower(User.role).in_(["clerk", "clerks"]))
@@ -146,6 +158,7 @@ async def createApplication(
     return JSONResponse(content={"message": "Application created"}, status_code=200)
 
 
+
 @application_router.get("/{application_id}")
 async def getApplication(application_id: UUID, access_token: str = Cookie(None)):
     user = protectRoute(access_token)
@@ -180,6 +193,19 @@ async def getApplication(application_id: UUID, access_token: str = Cookie(None))
             return JSONResponse(
                 content={"message": "Application not found"}, status_code=404
             )
+
+        application_obj = results[0][0]
+        # Authorization check: user must be creator, current handler, or system admin/principal/clerk
+        allowed_roles = [UserRole.SYSTEM_ADMIN, UserRole.PRINCIPAL, UserRole.CLERK]
+        if (
+            user.id != application_obj.created_by_id
+            and user.id != application_obj.current_handler_id
+            and user.role not in allowed_roles
+        ):
+            return JSONResponse(
+                content={"message": "Unauthorized to view this application"}, status_code=403
+            )
+
 
         # Initialize the application data
         application_data = None

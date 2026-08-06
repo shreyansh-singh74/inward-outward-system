@@ -1,4 +1,4 @@
-﻿# Python dependencies for Inward-Outward System
+# Python dependencies for Inward-Outward System
 fastapi>=0.100.0
 uvicorn>=0.22.0
 sqlalchemy>=2.0.0
@@ -11,3 +11,5 @@ pydantic>=2.0.0
 email-validator>=2.0.0
 itsdangerous>=2.1.2
 mysql-connector-python>=8.0.33
+redis>=5.0.0
+

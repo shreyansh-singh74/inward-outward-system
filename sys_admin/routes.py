@@ -7,68 +7,54 @@ import jwt
 from config import JWT_SECRET, JWT_ALGORITHM, engine
 from uuid import UUID
 from db.models import UserRole
-from .schema import UpdateUser
+from applications.routes import protectRoute
 from datetime import datetime
+
 
 sys_admin_router = APIRouter()
 
 
 @sys_admin_router.get("/get_all_user")
 async def getAllUserInfo(access_token: str = Cookie(None)):
-    decode = jwt.decode(access_token, JWT_SECRET, JWT_ALGORITHM)
-    if not decode:
+    user = protectRoute(access_token)
+    if not isinstance(user, User):
+        return user
+    if user.role != UserRole.SYSTEM_ADMIN:
         return JSONResponse(
-            content={"message": "Unauthorized request"}, status_code=401
+            content={"message": "You don't have access"}, status_code=403
         )
     with Session(engine) as session:
-        statement = select(User).where(User.id == UUID(decode.get("sub")))
-        result = session.scalars(statement).first()
-        if not result:
-            return JSONResponse(
-                content={"message": "Unauthorized request"}, status_code=401
-            )
-        if not result.role == UserRole.SYSTEM_ADMIN:
-            return JSONResponse(
-                content={"message": "You dont't have access"}, status_code=401
-            )
-        statement = select(User).where(User.id != UUID(decode.get("sub")))
+        statement = select(User).where(User.id != user.id)
         result = session.scalars(statement).all()
-        users = [user.__dict__ for user in result]
-        for user in users:
-            user.pop("_sa_instance_state", None)
-            for key, value in user.items():
+        users = [u.__dict__ for u in result]
+        for u in users:
+            u.pop("_sa_instance_state", None)
+            for key, value in u.items():
                 if isinstance(value, UUID):
-                    user[key] = str(value)
+                    u[key] = str(value)
                 if isinstance(value, datetime):
-                    user[key] = value.isoformat()
+                    u[key] = value.isoformat()
     return JSONResponse(content={"users": users}, status_code=200)
 
 
 @sys_admin_router.post("/update_user")
 async def updateUserInfo(body: UpdateUser, access_token: str = Cookie(None)):
-    decode = jwt.decode(access_token, JWT_SECRET, JWT_ALGORITHM)
-    if not decode:
+    user = protectRoute(access_token)
+    if not isinstance(user, User):
+        return user
+    if user.role != UserRole.SYSTEM_ADMIN:
         return JSONResponse(
-            content={"message": "Unauthorized request"}, status_code=401
+            content={"message": "You don't have access"}, status_code=403
         )
     with Session(engine) as session:
-        statement = select(User).where(User.id == UUID(decode.get("sub")))
-        result = session.scalars(statement).first()
-        if not result:
-            return JSONResponse(
-                content={"message": "Unauthorized request"}, status_code=401
-            )
-        if not result.role == UserRole.SYSTEM_ADMIN:
-            return JSONResponse(
-                content={"message": "You dont't have access"}, status_code=401
-            )
         statement = select(User).where(User.id == UUID(body.user_id))
-        result = session.scalars(statement).first()
-        if not result:
+        target_user = session.scalars(statement).first()
+        if not target_user:
             return JSONResponse(content={"message": "User not found"}, status_code=404)
-        result.department = body.department
-        result.role = body.role
+        target_user.department = body.department
+        target_user.role = body.role
         session.commit()
     return JSONResponse(
         content={"message": "User info updated successfully"}, status_code=201
     )
+

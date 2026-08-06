@@ -121,9 +121,10 @@ class Applications(Base):
 
     @staticmethod
     def get_next_counter(session: Session, year: int) -> int:
-        stmt = select(func.max(Applications.token_no)).where(Applications.year == year)
+        stmt = select(func.max(Applications.token_no)).where(Applications.year == year).with_for_update()
         result = session.execute(stmt).scalar()
         return (result or 0) + 1
+
 
     @classmethod
     def create_with_counter(

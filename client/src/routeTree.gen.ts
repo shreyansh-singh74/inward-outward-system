@@ -25,7 +25,6 @@ import { Route as ProtectedUserIdImport } from './routes/_protected/user.$id'
 import { Route as ProtectedUpdateIdImport } from './routes/_protected/update.$id'
 import { Route as ProtectedForwardIdImport } from './routes/_protected/forward.$id'
 import { Route as ProtectedApplicationIdImport } from './routes/_protected/application.$id'
-import { Route as AuthVerifyTokenImport } from './routes/_auth/verify.$token'
 
 // Create/Update Routes
 
@@ -111,12 +110,6 @@ const ProtectedApplicationIdRoute = ProtectedApplicationIdImport.update({
   getParentRoute: () => ProtectedRoute,
 } as any)
 
-const AuthVerifyTokenRoute = AuthVerifyTokenImport.update({
-  id: '/verify/$token',
-  path: '/verify/$token',
-  getParentRoute: () => AuthRoute,
-} as any)
-
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
@@ -191,13 +184,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedIndexImport
       parentRoute: typeof ProtectedImport
     }
-    '/_auth/verify/$token': {
-      id: '/_auth/verify/$token'
-      path: '/verify/$token'
-      fullPath: '/verify/$token'
-      preLoaderRoute: typeof AuthVerifyTokenImport
-      parentRoute: typeof AuthImport
-    }
     '/_protected/application/$id': {
       id: '/_protected/application/$id'
       path: '/application/$id'
@@ -234,13 +220,11 @@ declare module '@tanstack/react-router' {
 interface AuthRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
   AuthSignupRoute: typeof AuthSignupRoute
-  AuthVerifyTokenRoute: typeof AuthVerifyTokenRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
   AuthSignupRoute: AuthSignupRoute,
-  AuthVerifyTokenRoute: AuthVerifyTokenRoute,
 }
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
@@ -285,7 +269,6 @@ export interface FileRoutesByFullPath {
   '/turn_in': typeof ProtectedTurninRoute
   '/users': typeof ProtectedUsersRoute
   '/': typeof ProtectedIndexRoute
-  '/verify/$token': typeof AuthVerifyTokenRoute
   '/application/$id': typeof ProtectedApplicationIdRoute
   '/forward/$id': typeof ProtectedForwardIdRoute
   '/update/$id': typeof ProtectedUpdateIdRoute
@@ -302,7 +285,6 @@ export interface FileRoutesByTo {
   '/turn_in': typeof ProtectedTurninRoute
   '/users': typeof ProtectedUsersRoute
   '/': typeof ProtectedIndexRoute
-  '/verify/$token': typeof AuthVerifyTokenRoute
   '/application/$id': typeof ProtectedApplicationIdRoute
   '/forward/$id': typeof ProtectedForwardIdRoute
   '/update/$id': typeof ProtectedUpdateIdRoute
@@ -321,7 +303,6 @@ export interface FileRoutesById {
   '/_protected/turn_in': typeof ProtectedTurninRoute
   '/_protected/users': typeof ProtectedUsersRoute
   '/_protected/': typeof ProtectedIndexRoute
-  '/_auth/verify/$token': typeof AuthVerifyTokenRoute
   '/_protected/application/$id': typeof ProtectedApplicationIdRoute
   '/_protected/forward/$id': typeof ProtectedForwardIdRoute
   '/_protected/update/$id': typeof ProtectedUpdateIdRoute
@@ -340,7 +321,6 @@ export interface FileRouteTypes {
     | '/turn_in'
     | '/users'
     | '/'
-    | '/verify/$token'
     | '/application/$id'
     | '/forward/$id'
     | '/update/$id'
@@ -356,7 +336,6 @@ export interface FileRouteTypes {
     | '/turn_in'
     | '/users'
     | '/'
-    | '/verify/$token'
     | '/application/$id'
     | '/forward/$id'
     | '/update/$id'
@@ -373,7 +352,6 @@ export interface FileRouteTypes {
     | '/_protected/turn_in'
     | '/_protected/users'
     | '/_protected/'
-    | '/_auth/verify/$token'
     | '/_protected/application/$id'
     | '/_protected/forward/$id'
     | '/_protected/update/$id'
@@ -409,8 +387,7 @@ export const routeTree = rootRoute
       "filePath": "_auth.tsx",
       "children": [
         "/_auth/login",
-        "/_auth/signup",
-        "/_auth/verify/$token"
+        "/_auth/signup"
       ]
     },
     "/_protected": {
@@ -459,10 +436,6 @@ export const routeTree = rootRoute
     "/_protected/": {
       "filePath": "_protected/index.tsx",
       "parent": "/_protected"
-    },
-    "/_auth/verify/$token": {
-      "filePath": "_auth/verify.$token.tsx",
-      "parent": "/_auth"
     },
     "/_protected/application/$id": {
       "filePath": "_protected/application.$id.tsx",

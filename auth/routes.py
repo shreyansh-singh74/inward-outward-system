@@ -9,7 +9,7 @@ from sqlalchemy import Select as select
 from sqlalchemy.orm import Session
 from db.models import User, VerificationToken
 from fastapi import APIRouter, status, Response, Cookie, Request
-from config import engine, ACCESS_TOKEN_EXPIRY, create_access_token
+from config import engine, ACCESS_TOKEN_EXPIRY, create_access_token, PRODUCTION
 from datetime import timedelta
 from mail import create_message
 from .utils import generate_otp, store_otp, verify_otp, can_send_new_otp, store_user_registration_data, get_user_registration_data
@@ -143,11 +143,12 @@ async def verify_signup_otp(verification: OTPVerificationSchema):
     response.set_cookie(
         key="access_token",
         value=access_token,
-        max_age=3600 * 24 * 10,  # 10 days
+        max_age=int(ACCESS_TOKEN_EXPIRY) * 60 if ACCESS_TOKEN_EXPIRY.isdigit() else 3600 * 24,
         httponly=True,
-        secure=False,  # Set to True in production with HTTPS
+        secure=PRODUCTION,
         samesite="lax"
     )
+
     
     return response
 
@@ -249,11 +250,12 @@ async def verify_login_otp(verification: OTPVerificationSchema):
     response.set_cookie(
         key="access_token",
         value=access_token,
-        max_age=3600 * 24 * 10,  # 10 days
+        max_age=int(ACCESS_TOKEN_EXPIRY) * 60 if ACCESS_TOKEN_EXPIRY.isdigit() else 3600 * 24,
         httponly=True,
-        secure=False,  # Set to True in production with HTTPS
+        secure=PRODUCTION,
         samesite="lax"
     )
+
     
     return response
 
@@ -329,9 +331,10 @@ async def logout():
     response.delete_cookie(
         key="access_token",
         httponly=True,
-        secure=False,  # Set to True in production with HTTPS
+        secure=PRODUCTION,
         samesite="lax"
     )
+
     
     return response
 

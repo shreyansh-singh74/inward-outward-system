@@ -1,5 +1,5 @@
 from fastapi_mail import FastMail, ConnectionConfig, MessageSchema, MessageType
-from config import EMAIL_USERNAME, EMAIL_PASSWORD, EMAIL_FROm
+from config import EMAIL_USERNAME, EMAIL_PASSWORD, EMAIL_FROM
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -11,12 +11,13 @@ mail_config = ConnectionConfig(
     MAIL_FROM=EMAIL_USERNAME,  # type: ignore
     MAIL_PORT=587,
     MAIL_SERVER="smtp.gmail.com",
-    MAIL_FROM_NAME=EMAIL_FROm,
+    MAIL_FROM_NAME=EMAIL_FROM,
     MAIL_STARTTLS=True,
     MAIL_SSL_TLS=False,
     USE_CREDENTIALS=True,
     VALIDATE_CERTS=True,
 )
+
 
 
 mail = FastMail(config=mail_config)

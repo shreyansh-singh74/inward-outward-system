@@ -25,8 +25,9 @@ export const createApplicationSchema = zfd.formData({
   document: zfd
     .file()
     .refine((file) => file.size < 1024 * 1024 * 5, {
-      message: "File must be less than 2 MB",
+      message: "File must be less than 5 MB",
     })
+
     .optional(),
 });
 export const forwardApplicationSchema = z.object({

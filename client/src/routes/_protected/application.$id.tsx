@@ -98,9 +98,10 @@ function RouteComponent() {
   const { application } = data as ApplicationDetailsProps;
   const document_name = application.document?.split("/")[1];
   const handleClick = () => {
-    const url = `http://localhost:8000/api/documents/${document_name}`;
+    const url = `/api/documents/${document_name}`;
     window.open(url, "_blank");
   };
+
   const handleVerified = async () => {
     const res = await fetch(`/api/application/verify/${id}`, {
       method: "POST",

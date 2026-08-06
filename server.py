@@ -13,26 +13,38 @@ import os
 import asyncio
 from auth.utils import cleanup_expired_data
 
-app = FastAPI()
+from contextlib import asynccontextmanager
+from fastapi.middleware.cors import CORSMiddleware
+from config import CORS_ORIGINS, engine
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: start cleanup task
+    cleanup_task = asyncio.create_task(cleanup_background_task())
+    yield
+    # Shutdown: cancel cleanup task
+    cleanup_task.cancel()
+    try:
+        await cleanup_task
+    except asyncio.CancelledError:
+        pass
+
+app = FastAPI(lifespan=lifespan)
+
+if CORS_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=CORS_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 Base.metadata.create_all(engine)
 
-# Background task for cleanup
-cleanup_task = None
-
-@app.on_event("startup")
-async def startup_event():
-    global cleanup_task
-    cleanup_task = asyncio.create_task(cleanup_background_task())
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    if cleanup_task:
-        cleanup_task.cancel()
-        try:
-            await cleanup_task
-        except asyncio.CancelledError:
-            pass
+@app.get("/api/health")
+async def health_check():
+    return {"status": "ok", "timestamp": datetime.now(timezone.utc).isoformat()}
 
 async def cleanup_background_task():
     """Run cleanup task in the background every 5 minutes"""
@@ -42,6 +54,7 @@ async def cleanup_background_task():
         except Exception as e:
             print(f"Error in cleanup task: {str(e)}")
         await asyncio.sleep(300)  # 5 minutes
+
 
 
 @app.get("/api/authenticate")
