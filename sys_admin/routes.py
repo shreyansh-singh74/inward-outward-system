@@ -25,7 +25,7 @@ async def getAllUserInfo(access_token: str = Cookie(None)):
     with Session(engine) as session:
         statement = select(User).where(User.id != user.id)
         result = session.scalars(statement).all()
-        users = [u.__dict__ for u in result]
+        users = [dict(u.__dict__) for u in result]
         for u in users:
             u.pop("_sa_instance_state", None)
             for key, value in u.items():

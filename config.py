@@ -2,7 +2,7 @@ import dotenv
 import os
 from typing import Optional
 from db.models import User, Applications
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import jwt
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import create_engine
@@ -16,9 +16,10 @@ engine = create_engine(
     pool_pre_ping=True,
     pool_recycle=3600,
 )
-JWT_SECRET = os.getenv("JWT_SECRET")
-if not JWT_SECRET:
+_jwt_secret = os.getenv("JWT_SECRET")
+if not _jwt_secret:
     raise RuntimeError("JWT_SECRET must be set in the environment")
+JWT_SECRET: str = _jwt_secret
 JWT_ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRY = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")
 EMAIL_USERNAME = os.getenv("EMAIL_USERNAME")

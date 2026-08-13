@@ -1,0 +1,6 @@
+{
+  "venvPath": ".",
+  "venv": "venv",
+  "pythonVersion": "3.11",
+  "include": ["*.py", "auth", "applications", "db", "sys_admin"]
+}

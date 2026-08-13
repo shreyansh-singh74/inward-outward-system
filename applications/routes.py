@@ -389,7 +389,7 @@ async def getAllApplications(
             | (Applications.current_handler_id == user.id)
         )
         result = session.scalars(applications).all()
-    ans = [r.__dict__ for r in result]
+    ans = [dict(r.__dict__) for r in result]
     for r in ans:
         r.pop("_sa_instance_state", None)
         for key, value in r.items():

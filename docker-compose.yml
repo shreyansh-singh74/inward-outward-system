@@ -44,7 +44,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CLIENT_URL: ${CLIENT_URL:-https://localhost}
     ports:
-      # Traefik (deployer's reverse proxy) routes the domain here; bind to
+      # Traefik routes the domain here; bind to
       # localhost only so nothing on the LAN can reach the origin directly.
       - "127.0.0.1:8000:8000"
     volumes:

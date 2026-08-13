@@ -26,5 +26,7 @@ COPY --from=frontend /app/client/dist ./static/dist
 
 EXPOSE 8000
 
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+# Seed initial users (idempotent; only creates roles not already present),
+# then start the app. Requires SEED_* vars in .env for users to be created.
+CMD ["sh", "-c", "python seed.py && exec uvicorn server:app --host 0.0.0.0 --port 8000 --workers 4"]
 

@@ -87,8 +87,10 @@ async def signup(user: SignUpSchema, request: Request):
     emails = [user.email]
     await create_message(emails, subject, html)
     
+    # Return a generic response regardless of registration status so the page
+    # cannot be used to enumerate registered emails.
     return JSONResponse(
-        content={"message": "OTP sent to your email"},
+        content={"message": "If your email is registered, an OTP has been sent"},
         status_code=status.HTTP_200_OK
     )
 

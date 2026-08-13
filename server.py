@@ -7,7 +7,7 @@ from db.models import Base, User, SupportingDocuments, Applications, UserRole, r
 from sys_admin.routes import sys_admin_router
 from applications.routes import application_router, protectRoute
 from fastapi.responses import JSONResponse
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -75,7 +75,7 @@ async def authenticate(access_token: str = Cookie(None)):
         return JSONResponse(
             content={"error": "user is not authenticated"}, status_code=401
         )
-    user_response = user.__dict__
+    user_response = dict(user.__dict__)
     user_response.pop("_sa_instance_state", None)
     for key, value in user_response.items():
         if isinstance(value, UUID):
@@ -87,7 +87,7 @@ async def authenticate(access_token: str = Cookie(None)):
             "email": user_response.get("tcet_email"),
             "id": user_response.get("id"),
             "username": user_response.get("username"),
-            "role": normalize_role(user_response.get("role")),
+            "role": normalize_role(user_response.get("role") or ""),
             "department": user_response.get("department"),
         },
         status_code=200,
