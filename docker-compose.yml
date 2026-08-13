@@ -4,16 +4,13 @@ services:
     container_name: inward-outward-db
     restart: unless-stopped
     environment:
-      # Raw password (as typed), used by the MySQL container.
-      # Keep DB_ROOT_PASSWORD_URL below URL-encoded to match this.
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-tcet@1234}
+      # No default fallback: fail startup if not provided
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-turn_in_turn_out}
-    ports:
-      - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-tcet@1234}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -22,12 +19,11 @@ services:
     image: redis:7-alpine
     container_name: inward-outward-redis
     restart: unless-stopped
-    ports:
-      - "6379:6379"
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set}"]
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -44,11 +40,9 @@ services:
     env_file:
       - .env
     environment:
-      DB_URL: mysql+mysqlconnector://root:${DB_ROOT_PASSWORD_URL:-tcet%401234}@db:3306/${MYSQL_DATABASE:-turn_in_turn_out}
-      REDIS_URL: redis://redis:6379/0
-      CLIENT_URL: ${CLIENT_URL:-http://localhost:8000}
-    ports:
-      - "8000:8000"
+      DB_URL: mysql+mysqlconnector://root:${DB_ROOT_PASSWORD_URL:?DB_ROOT_PASSWORD_URL must be set (URL-encoded root password)}@db:3306/${MYSQL_DATABASE:-turn_in_turn_out}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CLIENT_URL: ${CLIENT_URL:-https://localhost}
     volumes:
       - media_data:/app/media
 
@@ -69,4 +63,3 @@ volumes:
   mysql_data:
   redis_data:
   media_data:
-

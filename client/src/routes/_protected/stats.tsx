@@ -44,7 +44,6 @@ export const Route = createFileRoute("/_protected/stats")({
     });
     if (res.status != 200) {
       toast.error("Failed to load application");
-      console.log(await res.json());
       return { error: "Failed to load application" };
     }
     const data = await res.json();
@@ -60,7 +59,6 @@ function RouteComponent() {
   const [selectedYear, setSelectedYear] = useState<string>("all");
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
   const [selectedDay, setSelectedDay] = useState<string>("all");
-  console.log(statsData);
   const years = useMemo(() => {
     return [
       "all",

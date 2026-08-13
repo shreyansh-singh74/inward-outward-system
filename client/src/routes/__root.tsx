@@ -23,7 +23,6 @@ export const Route = createRootRoute({
       });
 
       if (!res.ok) {
-        console.log("Authentication failed with status:", res.status);
         return { error: "user is not authenticated", status: res.status };
       }
 
@@ -46,7 +45,6 @@ export const Route = createRootRoute({
     const navigate = useNavigate();
 
     useEffect(() => {
-      console.log("Authentication data:", data);
 
       if (data.error && data.error === "user is not authenticated") {
         if (

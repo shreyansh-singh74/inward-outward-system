@@ -1,12 +1,11 @@
 from fastapi.responses import JSONResponse
 from sqlalchemy import Select as select
 from sqlalchemy.orm import Session
-from db.models import User
+from db.models import User, UserRole, normalize_role, role_matches
 from fastapi import APIRouter, Cookie
 import jwt
 from config import JWT_SECRET, JWT_ALGORITHM, engine
 from uuid import UUID
-from db.models import UserRole
 from applications.routes import protectRoute
 from datetime import datetime
 
@@ -19,7 +18,7 @@ async def getAllUserInfo(access_token: str = Cookie(None)):
     user = protectRoute(access_token)
     if not isinstance(user, User):
         return user
-    if user.role != UserRole.SYSTEM_ADMIN:
+    if not role_matches(user.role, UserRole.SYSTEM_ADMIN):
         return JSONResponse(
             content={"message": "You don't have access"}, status_code=403
         )
@@ -42,7 +41,7 @@ async def updateUserInfo(body: UpdateUser, access_token: str = Cookie(None)):
     user = protectRoute(access_token)
     if not isinstance(user, User):
         return user
-    if user.role != UserRole.SYSTEM_ADMIN:
+    if not role_matches(user.role, UserRole.SYSTEM_ADMIN):
         return JSONResponse(
             content={"message": "You don't have access"}, status_code=403
         )
@@ -52,7 +51,7 @@ async def updateUserInfo(body: UpdateUser, access_token: str = Cookie(None)):
         if not target_user:
             return JSONResponse(content={"message": "User not found"}, status_code=404)
         target_user.department = body.department
-        target_user.role = body.role
+        target_user.role = normalize_role(body.role)  # store canonical value
         session.commit()
     return JSONResponse(
         content={"message": "User info updated successfully"}, status_code=201

@@ -12,7 +12,7 @@ from fastapi import APIRouter, status, Response, Cookie, Request
 from config import engine, ACCESS_TOKEN_EXPIRY, create_access_token, PRODUCTION
 from datetime import timedelta
 from mail import create_message
-from .utils import generate_otp, store_otp, verify_otp, can_send_new_otp, store_user_registration_data, get_user_registration_data
+from .utils import generate_otp, store_otp, verify_otp, can_send_new_otp, store_user_registration_data, get_user_registration_data, client_ip, is_rate_limited
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import HTTPException
 from db.models import UserRole
@@ -27,16 +27,22 @@ authRouter = APIRouter()
 
 
 @authRouter.post("/signup")
-async def signup(user: SignUpSchema):
+async def signup(user: SignUpSchema, request: Request):
     """First step of signup - generate and send OTP"""
-    # Check if user already exists
+    # Per-IP rate limiting to prevent email bombing and SMTP abuse
+    if is_rate_limited("otp_send", client_ip(request)):
+        return JSONResponse(
+            content={"message": "Too many requests. Please try again later."},
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+        )
+    # Check if user already exists - use generic message to prevent account enumeration
     with Session(engine) as session:
         statement = select(User).where(User.tcet_email == user.email)
         results = session.scalars(statement).first()
         if results:
             return JSONResponse(
-                content={"message": "User already exists"},
-                status_code=status.HTTP_400_BAD_REQUEST
+                content={"message": "If your email is registered, an OTP has been sent"},
+                status_code=status.HTTP_200_OK
             )
     
     # Check if we can send a new OTP (rate limiting)
@@ -88,8 +94,14 @@ async def signup(user: SignUpSchema):
 
 
 @authRouter.post("/verify-otp/signup")
-async def verify_signup_otp(verification: OTPVerificationSchema):
+async def verify_signup_otp(verification: OTPVerificationSchema, request: Request):
     """Second step of signup - verify OTP and create user"""
+    # Per-IP rate limiting on OTP attempts (brute-force protection)
+    if is_rate_limited("otp_verify", client_ip(request)):
+        return JSONResponse(
+            content={"message": "Too many attempts. Please try again later."},
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+        )
     # Verify the OTP
     if not verify_otp(verification.email, verification.otp):
         return JSONResponse(
@@ -154,17 +166,24 @@ async def verify_signup_otp(verification: OTPVerificationSchema):
 
 
 @authRouter.post("/login")
-async def login(body: LoginSchema):
+async def login(body: LoginSchema, request: Request):
     """First step of login - check user and send OTP"""
+    # Per-IP rate limiting to prevent email bombing and SMTP abuse
+    if is_rate_limited("otp_send", client_ip(request)):
+        return JSONResponse(
+            content={"message": "Too many requests. Please try again later."},
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+        )
     with Session(engine) as session:
         statement = select(User).where(User.tcet_email == body.email)
         user = session.scalars(statement).first()
+        # Generic response for non-existent users and unverified emails to prevent enumeration
         if not user:
             return JSONResponse(
-                content={"message": "Invalid Credentials"},
-                status_code=status.HTTP_401_UNAUTHORIZED
+                content={"message": "If your email is registered, an OTP has been sent"},
+                status_code=status.HTTP_200_OK
             )
-        
+
         if not user.isEmailVerified:
             return JSONResponse(
                 content={"message": "Email not verified"},
@@ -217,8 +236,14 @@ async def login(body: LoginSchema):
 
 
 @authRouter.post("/verify-otp/login")
-async def verify_login_otp(verification: OTPVerificationSchema):
+async def verify_login_otp(verification: OTPVerificationSchema, request: Request):
     """Second step of login - verify OTP and issue JWT"""
+    # Per-IP rate limiting on OTP attempts (brute-force protection)
+    if is_rate_limited("otp_verify", client_ip(request)):
+        return JSONResponse(
+            content={"message": "Too many attempts. Please try again later."},
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+        )
     # Verify the OTP
     if not verify_otp(verification.email, verification.otp):
         return JSONResponse(
@@ -261,8 +286,14 @@ async def verify_login_otp(verification: OTPVerificationSchema):
 
 
 @authRouter.post("/resend-otp")
-async def resend_otp(body: ResendOTPSchema):
+async def resend_otp(body: ResendOTPSchema, request: Request):
     """Resend OTP to user's email"""
+    # Per-IP rate limiting to prevent email bombing and SMTP abuse
+    if is_rate_limited("otp_send", client_ip(request)):
+        return JSONResponse(
+            content={"message": "Too many requests. Please try again later."},
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+        )
     # Check if user exists
     with Session(engine) as session:
         statement = select(User).where(User.tcet_email == body.email)

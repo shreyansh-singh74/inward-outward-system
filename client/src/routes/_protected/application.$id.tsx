@@ -215,7 +215,7 @@ function RouteComponent() {
 
         {/* Action Buttons */}
         {application.current_handler_id === user?.id &&
-        user?.role !== "CLERKS" ? (
+        user?.role !== "clerk" ? (
           <CardFooter className="flex justify-between flex-col md:flex-row gap-4">
             <AcceptDialog id={id}>
               <Button className="bg-green-500 hover:bg-green-600 w-full md:w-[33%]">
@@ -235,7 +235,7 @@ function RouteComponent() {
             </Button>
           </CardFooter>
         ) : (
-          user.role === "CLERKS" && (
+          user.role === "clerk" && (
             <CardFooter className="flex justify-between flex-col md:flex-row gap-4">
               <IncompleteDialog id={id}>
                 <Button className="bg-blue-500 hover:bg-blue-600 w-full md:w-[45%]">

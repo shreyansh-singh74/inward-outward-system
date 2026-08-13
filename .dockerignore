@@ -13,3 +13,10 @@ static/dist/
 Dockerfile
 docker-compose.yml
 .dockerignore
+nginx/ssl/
+
+# Local databases and build artifacts - never bake into images
+*.db
+*.sqlite3
+static/dist/
+

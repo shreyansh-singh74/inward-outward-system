@@ -17,13 +17,17 @@ engine = create_engine(
     pool_recycle=3600,
 )
 JWT_SECRET = os.getenv("JWT_SECRET")
+if not JWT_SECRET:
+    raise RuntimeError("JWT_SECRET must be set in the environment")
 JWT_ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRY = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")
 EMAIL_USERNAME = os.getenv("EMAIL_USERNAME")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 EMAIL_FROM = os.getenv("EMAIL_FROM")
 PRODUCTION = os.getenv("PRODUCTION", "false").lower() == "true"
-CORS_ORIGINS = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "*").split(",") if origin.strip()]
+CORS_ORIGINS = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "").split(",") if origin.strip()]
+if PRODUCTION and not CORS_ORIGINS:
+    raise RuntimeError("CORS_ORIGINS must be configured in production (fail closed)")
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 MAX_UPLOAD_SIZE_MB = int(os.getenv("MAX_UPLOAD_SIZE_MB", "5"))
 ALLOWED_EXTENSIONS = set(os.getenv("ALLOWED_EXTENSIONS", "pdf,jpg,jpeg,png,doc,docx").split(","))

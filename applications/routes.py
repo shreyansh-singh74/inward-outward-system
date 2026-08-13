@@ -29,7 +29,8 @@ from uuid import UUID
 from datetime import datetime
 from dotenv import load_dotenv
 import os
-from db.models import UserRole
+import html
+from db.models import UserRole, normalize_role, role_matches
 
 load_dotenv()
 application_router = APIRouter()
@@ -144,7 +145,7 @@ async def createApplication(
         session.add(newApplication)
         session.add(newApplicationAction)
         session.commit()
-        link = f"http://{os.getenv('CLIENT_URL')}/application/{application_id}"
+        link = f"{os.getenv('CLIENT_URL', '').rstrip('/')}/application/{application_id}"
         html_message = f"""
         <h1>Application is Inwarded</h1>
         <p>Click here to see application <a href="{link}">link</a></p>
@@ -200,7 +201,7 @@ async def getApplication(application_id: UUID, access_token: str = Cookie(None))
         if (
             user.id != application_obj.created_by_id
             and user.id != application_obj.current_handler_id
-            and user.role not in allowed_roles
+            and not role_matches(user.role, *allowed_roles)
         ):
             return JSONResponse(
                 content={"message": "Unauthorized to view this application"}, status_code=403
@@ -311,6 +312,10 @@ async def update(
             return JSONResponse(
                 content={"message": "You dont't have access"}, status_code=401
             )
+        if body.status not in ApplicationStatus.__members__:
+            return JSONResponse(
+                content={"message": f"Invalid status '{body.status}'"}, status_code=400
+            )
         result.accept_reference_number = body.referenceNumber
         result.status = ApplicationStatus[body.status]
         newApplicationAction = ApplicationActions(
@@ -333,7 +338,7 @@ async def update(
             if body.referenceNumber:
                 html_message = f"""
                 <h1>Application is Accepted</h1>
-                <p>This is your reference Number {body.referenceNumber}</p>
+                <p>This is your reference Number {html.escape(body.referenceNumber)}</p>
                 """
             else:
                 html_message = f"""
@@ -348,10 +353,12 @@ async def update(
         else:
             html_message = f"""
                 <h1>Application of token number {result.token_no}</h1>
-                <h1>Application is {body.status}</h1>
+                <h1>Application is {html.escape(body.status)}</h1>
                 """
         subject = "please check this application"
         if result:
+            if body.remark:
+                html_message += f"<p>Remark: {html.escape(body.remark)}</p>"
             await create_message([creator.tcet_email], subject, html_message)
     return JSONResponse(content={"message": "Application updated"}, status_code=200)
 
@@ -399,6 +406,13 @@ async def ForwardApplication(
                 content={"message": "Application not found"}, status_code=404
             )
 
+        # Authorization: only the current handler (or sys admin) may forward
+        if result.current_handler_id != user.id and not role_matches(user.role, UserRole.SYSTEM_ADMIN):
+            return JSONResponse(
+                content={"message": "Only the current handler can forward this application"},
+                status_code=403,
+            )
+
         statement = select(User).where(
             func.lower(User.role) == func.lower(body.role),
             func.lower(User.department) == func.lower(body.department),
@@ -407,6 +421,11 @@ async def ForwardApplication(
         if not receiver:
             return JSONResponse(
                 content={"message": "Receiver not found"}, status_code=404
+            )
+        if receiver.id == user.id:
+            return JSONResponse(
+                content={"message": "Cannot forward an application to yourself"},
+                status_code=400,
             )
         result.current_handler_id = UUID(str(receiver.id))
         result.status = ApplicationStatus.FORWARDED
@@ -419,7 +438,7 @@ async def ForwardApplication(
         )
         session.add(newApplicationAction)
         session.commit()
-        link = f"http://{os.getenv('CLIENT_URL')}/application/{application_id}"
+        link = f"{os.getenv('CLIENT_URL', '').rstrip('/')}/application/{application_id}"
         html_message = f"""
         <h1>Application is Forwarded</h1>
         <p>Click here to see application <a href="{link}">link</a></p>
@@ -440,12 +459,12 @@ async def getStats(
     user = protectRoute(access_token)
     if not isinstance(user, User):
         return user
-    if user.role == UserRole.STUDENT:
+    if role_matches(user.role, UserRole.STUDENT):
         return JSONResponse(
             content={"message": "You are not authorized to view this page"},
             status_code=401,
         )
-    if user.role == "PRINCIPAL":
+    if role_matches(user.role, UserRole.PRINCIPAL):
         print("principal")
         with Session(engine) as session:
             statement = select(Applications)
@@ -497,16 +516,28 @@ async def getStats(
 
 
 @application_router.post("/verify/{application_id}")
-async def verifyApplication(application_id, access_token: str = Cookie(None)):
+async def verifyApplication(application_id: UUID, access_token: str = Cookie(None)):
     user = protectRoute(access_token)
     if not isinstance(user, User):
         return user
+    # Authorization: only clerk or system admin may verify applications
+    if not role_matches(user.role, UserRole.CLERK, UserRole.SYSTEM_ADMIN):
+        return JSONResponse(
+            content={"message": "You don't have access to verify applications"},
+            status_code=403,
+        )
     with Session(engine) as session:
-        statement = select(Applications).where(Applications.id == UUID(application_id))
+        statement = select(Applications).where(Applications.id == application_id)
         result = session.scalars(statement).first()
         if not result:
             return JSONResponse({"message": "Application not found"}, status_code=404)
-        statement = select(User).where(User.role == "PRINCIPAL")
+        # Handler check for clerks; system admin bypasses
+        if result.current_handler_id != user.id and not role_matches(user.role, UserRole.SYSTEM_ADMIN):
+            return JSONResponse(
+                content={"message": "Only the current handler can verify this application"},
+                status_code=403,
+            )
+        statement = select(User).where(func.lower(User.role) == UserRole.PRINCIPAL.value)
         receiver = session.scalars(statement).first()
         if not receiver:
             return JSONResponse(
@@ -521,10 +552,6 @@ async def verifyApplication(application_id, access_token: str = Cookie(None)):
             application_id=result.id,
             action_type="VERIFIED",
         )
-        if not result:
-            return JSONResponse(
-                content={"message": "Application not found"}, status_code=404
-            )
         session.add(newApplicationAction)
         session.commit()
     return JSONResponse(content={"message": "Application verified"}, status_code=200)
@@ -556,8 +583,32 @@ async def updateApplication(
                 content={"message": "Application not found"}, status_code=404
             )
 
+        # Authorization: only the creator (while incomplete) or current handler may edit
+        if (
+            application.created_by_id != user.id
+            and application.current_handler_id != user.id
+        ):
+            return JSONResponse(
+                content={"message": "You don't have access to update this application"},
+                status_code=403,
+            )
+
         # Update document if provided
         if document and document.filename:
+            # Validate extension and size (same policy as create)
+            ext = _safe_extension(document.filename)
+            if ext not in ALLOWED_EXTENSIONS:
+                return JSONResponse(
+                    content={"message": f"File extension '.{ext}' is not allowed"},
+                    status_code=400,
+                )
+            max_bytes = MAX_UPLOAD_SIZE_MB * 1024 * 1024
+            content = await document.read(max_bytes + 1)
+            if len(content) > max_bytes:
+                return JSONResponse(
+                    content={"message": f"File size exceeds maximum allowed ({MAX_UPLOAD_SIZE_MB}MB)"},
+                    status_code=400,
+                )
             # Delete existing document if it exists
             existing_document_statement = select(SupportingDocuments).where(
                 SupportingDocuments.application_id == UUID(str(application_id))
@@ -576,11 +627,9 @@ async def updateApplication(
 
             # Save the new document
             os.makedirs("media", exist_ok=True)
-            ext = _safe_extension(document.filename)
             unique_filename = f"{uuid4()}.{ext}"
             document_url = f"media/{unique_filename}"
             with open(document_url, "wb") as f:
-                content = await document.read()
                 f.write(content)
 
             newDocument = SupportingDocuments(

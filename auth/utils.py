@@ -1,7 +1,7 @@
 from config import JWT_SECRET, REDIS_URL
 from itsdangerous import URLSafeTimedSerializer
 import logging
-import random
+import secrets
 import string
 import bcrypt
 import json
@@ -21,11 +21,51 @@ except Exception as e:
 
 otp_store = {}
 user_reg_data = {}
+rate_limit_store = {}
+
+# Per-IP rate limits for auth endpoints (prevent email bombing / OTP brute force)
+IP_RATE_LIMITS = {
+    "otp_send": (10, 900),      # max 10 OTP sends per IP per 15 min
+    "otp_verify": (20, 900),    # max 20 verify attempts per IP per 15 min
+}
+
+def client_ip(request) -> str:
+    """Extract real client IP, honoring the nginx proxy header."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+def is_rate_limited(key: str, ip: str) -> bool:
+    """Return True if the IP exceeded the limit for the given key."""
+    limit, window = IP_RATE_LIMITS[key]
+    if use_redis:
+        rl_key = f"rl:{key}:{ip}"
+        current = redis_client.get(rl_key)
+        if current is None:
+            redis_client.setex(rl_key, window, 1)
+            return False
+        if int(current) >= limit:
+            return True
+        redis_client.incr(rl_key)
+        return False
+    now = datetime.now(timezone.utc)
+    store_key = (key, ip)
+    timestamps = [
+        t for t in rate_limit_store.get(store_key, [])
+        if now - t < timedelta(seconds=window)
+    ]
+    if len(timestamps) >= limit:
+        rate_limit_store[store_key] = timestamps
+        return True
+    timestamps.append(now)
+    rate_limit_store[store_key] = timestamps
+    return False
 
 def generate_otp(length=6):
-    """Generate a numeric OTP of specified length"""
+    """Generate a numeric OTP of specified length using a CSPRNG"""
     digits = string.digits
-    return ''.join(random.choice(digits) for _ in range(length))
+    return ''.join(secrets.choice(digits) for _ in range(length))
 
 def store_otp(email, otp, expiry_minutes=5):
     """Store OTP with expiration time"""

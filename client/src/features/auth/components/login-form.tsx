@@ -27,12 +27,6 @@ const SignInForm = () => {
   const [loading, setLoading] = React.useState(false);
   const [apiError, setApiError] = React.useState<string | null>(null);
 
-  // Debug state changes
-  React.useEffect(() => {
-    console.log("OTP sent state changed:", otpSent);
-    console.log("User email:", userEmail);
-  }, [otpSent, userEmail]);
-
   // Login form
   const loginForm = useForm<LoginType>({
     resolver: zodResolver(LoginSchema),
@@ -52,7 +46,6 @@ const SignInForm = () => {
 
   // Handler for login form submission (first step)
   const onSubmitEmail = async (values: LoginType) => {
-    console.log("Submitting login form with values:", values);
     setLoading(true);
     setApiError(null);
 
@@ -65,10 +58,8 @@ const SignInForm = () => {
         body: JSON.stringify(values),
       });
 
-      console.log("Login API response status:", res.status);
 
       const responseData = await res.json();
-      console.log("Login API response data:", responseData);
 
       if (!res.ok) {
         setApiError(responseData.message || "Failed to Login");
@@ -96,7 +87,6 @@ const SignInForm = () => {
 
   // Handler for OTP verification form submission (second step)
   const onVerifyOTP = async (values: OTPVerificationType) => {
-    console.log("Verifying OTP with values:", values);
     setLoading(true);
     setApiError(null);
 
@@ -110,7 +100,6 @@ const SignInForm = () => {
       });
 
       const data = await res.json();
-      console.log("OTP verification API response:", data);
 
       if (!res.ok) {
         setApiError(data.message || "Invalid OTP");
@@ -133,7 +122,6 @@ const SignInForm = () => {
   // Handle resend OTP
   const handleResendOTP = async () => {
     if (!userEmail) return;
-    console.log("Resending OTP for email:", userEmail);
     setLoading(true);
     setApiError(null);
 
@@ -147,7 +135,6 @@ const SignInForm = () => {
       });
 
       const data = await res.json();
-      console.log("Resend OTP API response:", data);
 
       if (!res.ok) {
         setApiError(data.message || "Failed to resend OTP");
@@ -167,7 +154,6 @@ const SignInForm = () => {
 
   // Go back to email input
   const handleBack = () => {
-    console.log("Going back to email input");
     setOtpSent(false);
     setUserEmail("");
     setApiError(null);

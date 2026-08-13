@@ -24,6 +24,40 @@ class UserRole(str, PyEnum):
     ASSOCIATE_DEAN = "associate_dean"
 
 
+# UI spellings -> canonical enum values (the sys_admin UI writes these verbatim)
+ROLE_ALIASES = {
+    "clerks": UserRole.CLERK.value,
+    "t_n_p": UserRole.T_AND_P.value,
+    "t&p": UserRole.T_AND_P.value,
+    "h_o_c": UserRole.HOC.value,
+    "r_n_d": "r_and_d",
+    "librarian": "librarian",
+    "hostel": "hostel",
+    "accounts": "accounts",
+    "admin": "admin",
+    "faculty": "faculty",
+    "ict": "ict",
+}
+
+
+def normalize_role(role: str) -> str:
+    """Canonicalize a role string (case-insensitive, alias-aware).
+
+    Existing rows may contain UI-written values like 'CLERKS' or 'PRINCIPAL';
+    this maps them onto the canonical enum values used by authz checks.
+    """
+    if not role:
+        return role
+    r = role.strip().lower()
+    return ROLE_ALIASES.get(r, r)
+
+
+def role_matches(role: str, *allowed: UserRole) -> bool:
+    """True if the (possibly legacy-format) role matches any allowed enum value."""
+    normalized = normalize_role(role)
+    return any(normalized == a.value for a in allowed)
+
+
 class ApplicationStatus(str, PyEnum):
     PENDING = "pending"
     INCOMPLETE = "incomplete"

@@ -22,7 +22,6 @@ import { SignupDepartments } from "@/contants";
 import { toast } from "sonner";
 
 const SignUpForm = () => {
-  console.log("Rendering SignUpForm component");
   const navigate = useNavigate();
   const [pending, setPending] = React.useState(false);
   const [otpSent, setOtpSent] = React.useState(false);
@@ -31,8 +30,6 @@ const SignUpForm = () => {
 
   // Debug state changes
   React.useEffect(() => {
-    console.log("OTP sent state changed:", otpSent);
-    console.log("Signup data:", signupData);
   }, [otpSent, signupData]);
 
   // Signup form
@@ -56,7 +53,6 @@ const SignUpForm = () => {
 
   // First step: send OTP
   const onSubmitSignup = async (values: SignUpType) => {
-    console.log("Submitting signup form with values:", values);
     setPending(true);
     setApiError(null);
 
@@ -69,10 +65,8 @@ const SignUpForm = () => {
         body: JSON.stringify(values),
       });
 
-      console.log("Signup API response status:", res.status);
 
       const responseData = await res.json();
-      console.log("Signup API response data:", responseData);
 
       if (!res.ok) {
         console.error("Signup API error:", responseData);
@@ -102,7 +96,6 @@ const SignUpForm = () => {
 
   // Second step: verify OTP
   const onVerifyOTP = async (values: OTPVerificationType) => {
-    console.log("Verifying OTP with values:", values);
     setPending(true);
     setApiError(null);
 
@@ -116,7 +109,6 @@ const SignUpForm = () => {
       });
 
       const data = await res.json();
-      console.log("OTP verification API response:", data);
 
       if (!res.ok) {
         setApiError(data.message || "Invalid OTP");
@@ -140,7 +132,6 @@ const SignUpForm = () => {
   // Handle resend OTP
   const handleResendOTP = async () => {
     if (!signupData) return;
-    console.log("Resending OTP for email:", signupData.email);
     setPending(true);
     setApiError(null);
 
@@ -154,7 +145,6 @@ const SignUpForm = () => {
       });
 
       const data = await res.json();
-      console.log("Resend OTP API response:", data);
 
       if (!res.ok) {
         setApiError(data.message || "Failed to resend OTP");
@@ -175,14 +165,12 @@ const SignUpForm = () => {
 
   // Go back to signup form
   const handleBack = () => {
-    console.log("Going back to signup form");
     setOtpSent(false);
     setSignupData(null);
     setApiError(null);
     otpForm.reset(); // Reset OTP form completely
   };
 
-  console.log("Current render state - OTP sent:", otpSent);
 
   return (
     <Card className="w-[90%] md:w-[50%] lg:w-[40%] m-auto">

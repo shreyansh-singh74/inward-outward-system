@@ -48,7 +48,6 @@ interface ApplicationTimelineProps {
 }
 
 export default function Actions({ application }: ApplicationTimelineProps) {
-  console.log(application);
   const [selectedAction, setSelectedAction] = useState<Action | null>(null);
   const { actions } = application;
   const sortedAction = actions.sort(
