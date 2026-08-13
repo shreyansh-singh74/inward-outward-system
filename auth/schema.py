@@ -2,8 +2,8 @@ from pydantic import BaseModel, EmailStr, Field
 
 
 class SignUpSchema(BaseModel):
-    name: str
-    department: str
+    name: str = Field(..., min_length=1, max_length=30)
+    department: str = Field(..., min_length=1, max_length=200)
     email: EmailStr
 
 

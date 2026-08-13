@@ -186,8 +186,8 @@ async def login(body: LoginSchema, request: Request):
 
         if not user.isEmailVerified:
             return JSONResponse(
-                content={"message": "Email not verified"},
-                status_code=status.HTTP_401_UNAUTHORIZED
+                content={"message": "If your email is registered, an OTP has been sent"},
+                status_code=status.HTTP_200_OK
             )
     
     # Check if we can send a new OTP (rate limiting)

@@ -80,6 +80,13 @@ async def createApplication(
     user = protectRoute(access_token)
     if not isinstance(user, User):
         return user
+
+    # Length validation for Form fields (DB columns are 256/200 chars)
+    if len(description) > 256 or len(subject) > 200 or len(for_user) > 200:
+        return JSONResponse(
+            content={"message": "Input exceeds maximum allowed length"},
+            status_code=400,
+        )
     document_url = None
     if document and document.filename:
         ext = _safe_extension(document.filename)
@@ -315,6 +322,12 @@ async def update(
         if body.status not in ApplicationStatus.__members__:
             return JSONResponse(
                 content={"message": f"Invalid status '{body.status}'"}, status_code=400
+            )
+        # Handlers may only accept/reject/mark-incomplete; forwarding is its own action
+        if body.status not in ("ACCEPTED", "REJECTED", "INCOMPLETE"):
+            return JSONResponse(
+                content={"message": f"Status '{body.status}' cannot be set this way"},
+                status_code=400,
             )
         result.accept_reference_number = body.referenceNumber
         result.status = ApplicationStatus[body.status]
@@ -569,6 +582,13 @@ async def updateApplication(
     user = protectRoute(access_token)
     if not isinstance(user, User):
         return user
+
+    # Length validation for Form fields (DB columns are 256/200 chars)
+    if len(description) > 256 or len(subject) > 200 or len(for_user) > 200:
+        return JSONResponse(
+            content={"message": "Input exceeds maximum allowed length"},
+            status_code=400,
+        )
 
     document_url = None
     with Session(engine) as session:

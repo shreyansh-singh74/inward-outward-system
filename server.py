@@ -42,6 +42,15 @@ if CORS_ORIGINS:
         allow_headers=["*"],
     )
 
+@app.middleware("http")
+async def no_store_api_cache(request: Request, call_next):
+    """Prevent Cloudflare/browser caching of authenticated API responses."""
+    response = await call_next(request)
+    if request.url.path.startswith("/api"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+    return response
+
 Base.metadata.create_all(engine)
 
 @app.get("/api/health")

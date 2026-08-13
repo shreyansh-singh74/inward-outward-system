@@ -30,7 +30,15 @@ IP_RATE_LIMITS = {
 }
 
 def client_ip(request) -> str:
-    """Extract real client IP, honoring the nginx proxy header."""
+    """Extract real client IP, honoring Cloudflare/nginx proxy headers.
+
+    Order matters: CF-Connecting-IP is set by the Cloudflare edge and cannot
+    be spoofed by the client. X-Forwarded-For is only trusted because nginx
+    overwrites it from CF-Connecting-IP before forwarding to the app.
+    """
+    cf = request.headers.get("cf-connecting-ip")
+    if cf:
+        return cf.split(",")[0].strip()
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
         return forwarded.split(",")[0].strip()
