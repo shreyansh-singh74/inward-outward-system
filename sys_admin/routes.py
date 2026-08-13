@@ -8,7 +8,7 @@ from config import JWT_SECRET, JWT_ALGORITHM, engine
 from uuid import UUID
 from applications.routes import protectRoute
 from datetime import datetime
-
+from .schema import UpdateUser
 
 sys_admin_router = APIRouter()
 
@@ -56,4 +56,3 @@ async def updateUserInfo(body: UpdateUser, access_token: str = Cookie(None)):
     return JSONResponse(
         content={"message": "User info updated successfully"}, status_code=201
     )
-

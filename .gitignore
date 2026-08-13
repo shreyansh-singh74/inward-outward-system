@@ -10,6 +10,3 @@ media/
 
 # Node
 node_modules/
-
-# TLS keys/certs - never commit private keys
-nginx/ssl/
