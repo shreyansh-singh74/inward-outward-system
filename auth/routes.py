@@ -92,7 +92,13 @@ async def signup(user: SignUpSchema, request: Request):
     
     subject = "Your OTP for Account Verification"
     emails = [user.email]
-    await create_message(emails, subject, html)
+    try:
+        await create_message(emails, subject, html)
+    except Exception:
+        return JSONResponse(
+            content={"message": "Could not send OTP email. Please try again later."},
+            status_code=status.HTTP_502_BAD_GATEWAY,
+        )
     
     # Return a clear response so the user knows the OTP was sent.
     return JSONResponse(
@@ -249,7 +255,13 @@ async def login(body: LoginSchema, request: Request):
     
     subject = "Your Login OTP"
     emails = [body.email]
-    await create_message(emails, subject, html)
+    try:
+        await create_message(emails, subject, html)
+    except Exception:
+        return JSONResponse(
+            content={"message": "Could not send OTP email. Please try again later."},
+            status_code=status.HTTP_502_BAD_GATEWAY,
+        )
     
     return JSONResponse(
         content={"message": "OTP sent to your email"},
@@ -379,7 +391,13 @@ async def resend_otp(body: ResendOTPSchema, request: Request):
     
     subject = "Your New OTP"
     emails = [body.email]
-    await create_message(emails, subject, html)
+    try:
+        await create_message(emails, subject, html)
+    except Exception:
+        return JSONResponse(
+            content={"message": "Could not send OTP email. Please try again later."},
+            status_code=status.HTTP_502_BAD_GATEWAY,
+        )
     
     return JSONResponse(
         content={"message": "New OTP sent to your email"},

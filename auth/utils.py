@@ -1,6 +1,7 @@
 from config import JWT_SECRET, REDIS_URL
 from itsdangerous import URLSafeTimedSerializer
 import logging
+import os
 import secrets
 import string
 import bcrypt
@@ -10,12 +11,17 @@ import redis
 
 serializer = URLSafeTimedSerializer(secret_key=JWT_SECRET, salt="email-configuration")
 
-# Initialize Redis client with fallback to in-memory if Redis is unreachable
+# Redis is required in production: OTP/rate-limit state must be shared across
+# uvicorn workers. Fail closed instead of silently degrading to per-worker
+# in-memory dicts (which would let OTPs verify on one worker and fail on
+# another). Local dev (PRODUCTION != true) keeps the in-memory fallback.
 try:
     redis_client = redis.Redis.from_url(REDIS_URL, decode_responses=True)
     redis_client.ping()
     use_redis = True
 except Exception as e:
+    if os.getenv("PRODUCTION", "false").lower() == "true":
+        raise RuntimeError(f"Redis is required in production but unreachable: {e}")
     logging.warning(f"Redis not available, falling back to in-memory store: {e}")
     use_redis = False
 

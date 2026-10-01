@@ -1,7 +1,6 @@
 services:
   db:
     image: mysql:8.0
-    container_name: inward-outward-db
     restart: unless-stopped
     environment:
       # No default fallback: fail startup if not provided
@@ -17,7 +16,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: inward-outward-redis
     restart: unless-stopped
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set}"]
     volumes:
@@ -30,7 +28,6 @@ services:
 
   web:
     build: .
-    container_name: inward-outward-web
     restart: unless-stopped
     depends_on:
       db:
@@ -43,30 +40,30 @@ services:
       DB_URL: mysql+mysqlconnector://root:${DB_ROOT_PASSWORD_URL:?DB_ROOT_PASSWORD_URL must be set (URL-encoded root password)}@db:3306/${MYSQL_DATABASE:-turn_in_turn_out}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CLIENT_URL: ${CLIENT_URL:-https://localhost}
-    ports:
-      # Cloudflare Tunnel is the only public ingress; bind to localhost only
-      # so nothing on the LAN can reach the origin directly. This published
-      # port is for local debugging - the tunnel reaches the app over the
-      # compose network at http://web:8000 and does not need it.
-      - "127.0.0.1:8000:8000"
+    # No ports published: Traefik reaches web over the compose network.
+    # No cloudflared service: the tunnel runs at the host/platform level.
+    networks:
+      - default
+      - dokploy-network
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - "traefik.http.routers.inward-web.rule=Host(`${DOMAIN:?DOMAIN must be set}`)"
+      - traefik.http.services.inward-web.loadbalancer.server.port=8000
     volumes:
       - media_data:/app/media
-
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: inward-outward-cloudflared
-    restart: unless-stopped
-    depends_on:
-      - web
-    # No nginx in front: cloudflared talks straight to the FastAPI container,
-    # which already serves both the built React UI and the /api routes on
-    # port 8000. No ports are published - cloudflared only makes OUTBOUND
-    # connections to Cloudflare's edge.
-    # In the Zero Trust dashboard, set the tunnel's Public Hostname service
-    # to: http://web:8000   ("web" resolves inside this compose network)
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN must be set (create a tunnel in the Cloudflare Zero Trust dashboard)}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
 
 volumes:
   mysql_data:
   redis_data:
   media_data:
+
+networks:
+  dokploy-network:
+    external: true
