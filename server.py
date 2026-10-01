@@ -102,7 +102,8 @@ def logout(access_token: str = Cookie(None)):
             content={"error": "user is not authenticated"}, status_code=401
         )
     response = JSONResponse(content={"message": "account logged out successfully"})
-    response.delete_cookie(key="access_token")
+    from config import PRODUCTION as _PROD
+    response.delete_cookie(key="access_token", path="/", httponly=True, secure=_PROD, samesite="lax")
     return response
 
 
@@ -164,9 +165,15 @@ app.mount("/assets", StaticFiles(directory="static/dist/assets"), name="assets")
 
 @app.get("/{full_path:path}")
 async def catch_all(full_path: str, request: Request):
-    index_path = os.path.join("static/dist", "index.html")
+    dist_dir = os.path.abspath(os.path.join("static/dist"))
     if request.url.path.startswith("/api"):
         return JSONResponse({"error": "API endpoint not found"}, status_code=404)
+    # Serve static files from dist (favicon, images, etc.) if they exist
+    if full_path:
+        safe_path = os.path.abspath(os.path.join(dist_dir, full_path))
+        if safe_path.startswith(dist_dir) and os.path.isfile(safe_path):
+            return FileResponse(safe_path)
+    index_path = os.path.join("static/dist", "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
     return {"message": "File not found"}

@@ -12,7 +12,7 @@ from fastapi import APIRouter, status, Response, Cookie, Request
 from config import engine, ACCESS_TOKEN_EXPIRY, create_access_token, PRODUCTION
 from datetime import timedelta
 from mail import create_message
-from .utils import generate_otp, store_otp, verify_otp, can_send_new_otp, store_user_registration_data, get_user_registration_data, client_ip, is_rate_limited
+from .utils import generate_otp, store_otp, verify_otp, can_send_new_otp, store_user_registration_data, get_user_registration_data, client_ip, is_rate_limited, hit_email_verify_limit, clear_email_verify_limit, hit_email_send_limit
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import HTTPException
 from db.models import UserRole
@@ -41,14 +41,21 @@ async def signup(user: SignUpSchema, request: Request):
         results = session.scalars(statement).first()
         if results:
             return JSONResponse(
-                content={"message": "If your email is registered, an OTP has been sent"},
-                status_code=status.HTTP_200_OK
+                content={"message": "Account already exists. Please sign in instead."},
+                status_code=status.HTTP_400_BAD_REQUEST
             )
     
     # Check if we can send a new OTP (rate limiting)
     if not can_send_new_otp(user.email):
         return JSONResponse(
             content={"message": "Please wait before requesting a new OTP"},
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+        )
+
+    # Per-email send cap (primary anti-abuse now that IP limit is loose)
+    if hit_email_send_limit(user.email):
+        return JSONResponse(
+            content={"message": "Too many OTPs sent to this email. Please try again in an hour."},
             status_code=status.HTTP_429_TOO_MANY_REQUESTS
         )
     
@@ -87,10 +94,9 @@ async def signup(user: SignUpSchema, request: Request):
     emails = [user.email]
     await create_message(emails, subject, html)
     
-    # Return a generic response regardless of registration status so the page
-    # cannot be used to enumerate registered emails.
+    # Return a clear response so the user knows the OTP was sent.
     return JSONResponse(
-        content={"message": "If your email is registered, an OTP has been sent"},
+        content={"message": "OTP sent to your email"},
         status_code=status.HTTP_200_OK
     )
 
@@ -104,12 +110,19 @@ async def verify_signup_otp(verification: OTPVerificationSchema, request: Reques
             content={"message": "Too many attempts. Please try again later."},
             status_code=status.HTTP_429_TOO_MANY_REQUESTS
         )
+    # Per-email throttle (distributed brute-force / OTP-burn protection)
+    if hit_email_verify_limit(verification.email):
+        return JSONResponse(
+            content={"message": "Too many attempts for this email. Please request a new OTP and try again in 15 minutes."},
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+        )
     # Verify the OTP
     if not verify_otp(verification.email, verification.otp):
         return JSONResponse(
             content={"message": "Invalid or expired OTP"},
             status_code=status.HTTP_400_BAD_REQUEST
         )
+    clear_email_verify_limit(verification.email)
     
     # Retrieve stored user registration data
     user_data = get_user_registration_data(verification.email)
@@ -158,6 +171,7 @@ async def verify_signup_otp(verification: OTPVerificationSchema, request: Reques
         key="access_token",
         value=access_token,
         max_age=int(ACCESS_TOKEN_EXPIRY) * 60 if ACCESS_TOKEN_EXPIRY.isdigit() else 3600 * 24,
+        path="/",
         httponly=True,
         secure=PRODUCTION,
         samesite="lax"
@@ -179,19 +193,25 @@ async def login(body: LoginSchema, request: Request):
     with Session(engine) as session:
         statement = select(User).where(User.tcet_email == body.email)
         user = session.scalars(statement).first()
-        # Generic response for non-existent users and unverified emails to prevent enumeration
         if not user:
             return JSONResponse(
-                content={"message": "If your email is registered, an OTP has been sent"},
-                status_code=status.HTTP_200_OK
+                content={"message": "No account found with this email. Please sign up first."},
+                status_code=status.HTTP_404_NOT_FOUND
             )
 
         if not user.isEmailVerified:
             return JSONResponse(
-                content={"message": "If your email is registered, an OTP has been sent"},
-                status_code=status.HTTP_200_OK
+                content={"message": "Email not verified. Please sign up again to verify your email."},
+                status_code=status.HTTP_403_FORBIDDEN
             )
-    
+
+    # Per-email send cap (primary anti-abuse now that IP limit is loose)
+    if hit_email_send_limit(body.email):
+        return JSONResponse(
+            content={"message": "Too many OTPs sent to this email. Please try again in an hour."},
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+        )
+
     # Check if we can send a new OTP (rate limiting)
     if not can_send_new_otp(body.email):
         return JSONResponse(
@@ -246,12 +266,19 @@ async def verify_login_otp(verification: OTPVerificationSchema, request: Request
             content={"message": "Too many attempts. Please try again later."},
             status_code=status.HTTP_429_TOO_MANY_REQUESTS
         )
+    # Per-email throttle (distributed brute-force / OTP-burn protection)
+    if hit_email_verify_limit(verification.email):
+        return JSONResponse(
+            content={"message": "Too many attempts for this email. Please request a new OTP and try again in 15 minutes."},
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+        )
     # Verify the OTP
     if not verify_otp(verification.email, verification.otp):
         return JSONResponse(
             content={"message": "Invalid or expired OTP"},
             status_code=status.HTTP_400_BAD_REQUEST
         )
+    clear_email_verify_limit(verification.email)
     
     # Get user from database
     with Session(engine) as session:
@@ -278,6 +305,7 @@ async def verify_login_otp(verification: OTPVerificationSchema, request: Request
         key="access_token",
         value=access_token,
         max_age=int(ACCESS_TOKEN_EXPIRY) * 60 if ACCESS_TOKEN_EXPIRY.isdigit() else 3600 * 24,
+        path="/",
         httponly=True,
         secure=PRODUCTION,
         samesite="lax"
@@ -300,18 +328,24 @@ async def resend_otp(body: ResendOTPSchema, request: Request):
     with Session(engine) as session:
         statement = select(User).where(User.tcet_email == body.email)
         user = session.scalars(statement).first()
-        
-        # For security reasons, always return success even if user doesn't exist
+
         if not user:
             return JSONResponse(
-                content={"message": "If your email is registered, an OTP has been sent"},
-                status_code=status.HTTP_200_OK
+                content={"message": "No account found with this email. Please sign up first."},
+                status_code=status.HTTP_404_NOT_FOUND
             )
     
     # Check if we can send a new OTP (rate limiting)
     if not can_send_new_otp(body.email):
         return JSONResponse(
             content={"message": "Please wait before requesting a new OTP"},
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+        )
+
+    # Per-email send cap (primary anti-abuse now that IP limit is loose)
+    if hit_email_send_limit(body.email):
+        return JSONResponse(
+            content={"message": "Too many OTPs sent to this email. Please try again in an hour."},
             status_code=status.HTTP_429_TOO_MANY_REQUESTS
         )
     
@@ -348,7 +382,7 @@ async def resend_otp(body: ResendOTPSchema, request: Request):
     await create_message(emails, subject, html)
     
     return JSONResponse(
-        content={"message": "If your email is registered, an OTP has been sent"},
+        content={"message": "New OTP sent to your email"},
         status_code=status.HTTP_200_OK
     )
 
@@ -363,6 +397,7 @@ async def logout():
     
     response.delete_cookie(
         key="access_token",
+        path="/",
         httponly=True,
         secure=PRODUCTION,
         samesite="lax"

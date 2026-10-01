@@ -23,18 +23,34 @@ otp_store = {}
 user_reg_data = {}
 rate_limit_store = {}
 
-# Per-IP rate limits for auth endpoints (prevent email bombing / OTP brute force)
+# Per-IP rate limits are a loose backstop only (a whole campus NAT can share
+# one egress IP). Real abuse protection lives in the per-email limits below.
 IP_RATE_LIMITS = {
-    "otp_send": (10, 900),      # max 10 OTP sends per IP per 15 min
-    "otp_verify": (20, 900),    # max 20 verify attempts per IP per 15 min
+    "otp_send": (60, 900),      # max 60 OTP sends per IP per 15 min
+    "otp_verify": (30, 900),    # max 30 verify attempts per IP per 15 min
 }
 
+# Per-email OTP verify throttle (prevents distributed brute-force / OTP-burn
+# login-DoS against a single victim: 3 wrong guesses burns an OTP, so without
+# this an attacker rotating IPs could keep invalidating the victim's codes).
+EMAIL_VERIFY_LIMIT = 5          # max verify attempts per email...
+EMAIL_VERIFY_WINDOW = 900       # ...per 15 minutes
+email_verify_store = {}
+
+# Per-email OTP send throttle (primary anti-email-bombing defense now that
+# the IP limit is loose): 60s cooldown is enforced by can_send_new_otp, and
+# this caps total sends per email per hour.
+EMAIL_SEND_LIMIT = 5            # max OTP sends per email...
+EMAIL_SEND_WINDOW = 3600        # ...per hour
+email_send_store = {}
+
 def client_ip(request) -> str:
-    """Extract real client IP, honoring Cloudflare/nginx proxy headers.
+    """Extract real client IP, honoring Cloudflare Tunnel proxy headers.
 
     Order matters: CF-Connecting-IP is set by the Cloudflare edge and cannot
-    be spoofed by the client. X-Forwarded-For is only trusted because nginx
-    overwrites it from CF-Connecting-IP before forwarding to the app.
+    be spoofed by the client. cloudflared forwards the edge-set headers to the
+    app as-is (there is no nginx in the path), so only the first hop of
+    X-Forwarded-For is ever used as a fallback.
     """
     cf = request.headers.get("cf-connecting-ip")
     if cf:
@@ -69,6 +85,75 @@ def is_rate_limited(key: str, ip: str) -> bool:
     timestamps.append(now)
     rate_limit_store[store_key] = timestamps
     return False
+
+def hit_email_verify_limit(email: str) -> bool:
+    """Per-email OTP verify throttle. Returns True if the email exceeded
+    EMAIL_VERIFY_LIMIT attempts within EMAIL_VERIFY_WINDOW (caller should
+    reject with 429). Counts every attempt; call clear_email_verify_limit()
+    on success so a legit login resets the counter."""
+    key = email.strip().lower()
+    if use_redis:
+        rl_key = f"ev:{key}"
+        current = redis_client.get(rl_key)
+        if current is None:
+            redis_client.setex(rl_key, EMAIL_VERIFY_WINDOW, 1)
+            return False
+        if int(current) >= EMAIL_VERIFY_LIMIT:
+            return True
+        redis_client.incr(rl_key)
+        return False
+    now = datetime.now(timezone.utc)
+    timestamps = [
+        t for t in email_verify_store.get(key, [])
+        if now - t < timedelta(seconds=EMAIL_VERIFY_WINDOW)
+    ]
+    if len(timestamps) >= EMAIL_VERIFY_LIMIT:
+        email_verify_store[key] = timestamps
+        return True
+    timestamps.append(now)
+    email_verify_store[key] = timestamps
+    return False
+
+def clear_email_verify_limit(email: str) -> None:
+    """Reset the per-email verify counter (call after a successful OTP)."""
+    key = email.strip().lower()
+    try:
+        if use_redis:
+            redis_client.delete(f"ev:{key}")
+            return
+    except Exception:
+        pass
+    email_verify_store.pop(key, None)
+
+def hit_email_send_limit(email: str) -> bool:
+    """Per-email OTP send throttle. Returns True if the email exceeded
+    EMAIL_SEND_LIMIT sends within EMAIL_SEND_WINDOW (caller: 429)."""
+    key = email.strip().lower()
+    if use_redis:
+        try:
+            rl_key = f"es:{key}"
+            current = redis_client.get(rl_key)
+            if current is None:
+                redis_client.setex(rl_key, EMAIL_SEND_WINDOW, 1)
+                return False
+            if int(current) >= EMAIL_SEND_LIMIT:
+                return True
+            redis_client.incr(rl_key)
+            return False
+        except Exception:
+            pass
+    now = datetime.now(timezone.utc)
+    timestamps = [
+        t for t in email_send_store.get(key, [])
+        if now - t < timedelta(seconds=EMAIL_SEND_WINDOW)
+    ]
+    if len(timestamps) >= EMAIL_SEND_LIMIT:
+        email_send_store[key] = timestamps
+        return True
+    timestamps.append(now)
+    email_send_store[key] = timestamps
+    return False
+
 
 def generate_otp(length=6):
     """Generate a numeric OTP of specified length using a CSPRNG"""

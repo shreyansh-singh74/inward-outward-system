@@ -44,11 +44,27 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CLIENT_URL: ${CLIENT_URL:-https://localhost}
     ports:
-      # Traefik routes the domain here; bind to
-      # localhost only so nothing on the LAN can reach the origin directly.
+      # Cloudflare Tunnel is the only public ingress; bind to localhost only
+      # so nothing on the LAN can reach the origin directly. This published
+      # port is for local debugging - the tunnel reaches the app over the
+      # compose network at http://web:8000 and does not need it.
       - "127.0.0.1:8000:8000"
     volumes:
       - media_data:/app/media
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: inward-outward-cloudflared
+    restart: unless-stopped
+    depends_on:
+      - web
+    # No nginx in front: cloudflared talks straight to the FastAPI container,
+    # which already serves both the built React UI and the /api routes on
+    # port 8000. No ports are published - cloudflared only makes OUTBOUND
+    # connections to Cloudflare's edge.
+    # In the Zero Trust dashboard, set the tunnel's Public Hostname service
+    # to: http://web:8000   ("web" resolves inside this compose network)
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN must be set (create a tunnel in the Cloudflare Zero Trust dashboard)}
 
 volumes:
   mysql_data:
