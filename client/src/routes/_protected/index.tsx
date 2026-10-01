@@ -41,11 +41,13 @@ export const Route = createFileRoute("/_protected/")({
   loader: async () => {
     const res = await fetch("/api/application/all", {
       method: "POST",
+      credentials: "include",
     });
     if (res.status !== 200) {
       toast.error("Failed to load application");
+      return [];
     }
-    return (await res.json()).applications;
+    return (await res.json()).applications ?? [];
   },
   component: RouteComponent,
 });

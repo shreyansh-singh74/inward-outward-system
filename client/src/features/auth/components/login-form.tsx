@@ -17,11 +17,10 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 
 const SignInForm = () => {
-  const navigate = useNavigate();
   const [otpSent, setOtpSent] = React.useState(false);
   const [userEmail, setUserEmail] = React.useState("");
   const [loading, setLoading] = React.useState(false);
@@ -93,6 +92,7 @@ const SignInForm = () => {
     try {
       const res = await fetch(`/api/auth/verify-otp/login`, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -109,7 +109,9 @@ const SignInForm = () => {
 
       toast.success("Login successful");
       // Navigate to home/dashboard
-      navigate({ to: "/" });
+      // Full page load (not SPA navigate) so the fresh HttpOnly cookie is
+      // guaranteed to be sent and the root loader re-authenticates cleanly.
+      window.location.href = "/";
     } catch (error) {
       console.error("OTP verification API exception:", error);
       setApiError("Network error. Please try again.");
@@ -138,11 +140,11 @@ const SignInForm = () => {
 
       if (!res.ok) {
         setApiError(data.message || "Failed to resend OTP");
-        toast.error("Failed to resend OTP");
+        toast.error(data.message || "Failed to resend OTP");
         return;
       }
 
-      toast.success("New OTP sent to your email");
+      toast.success(data.message || "New OTP sent to your email");
     } catch (error) {
       console.error("Resend OTP API exception:", error);
       setApiError("Network error. Please try again.");

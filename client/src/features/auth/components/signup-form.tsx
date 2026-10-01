@@ -16,13 +16,14 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import SelectFormControl from "@/components/select";
 import { SignupDepartments } from "@/contants";
 import { toast } from "sonner";
 
 const SignUpForm = () => {
   const navigate = useNavigate();
+  const router = useRouter();
   const [pending, setPending] = React.useState(false);
   const [otpSent, setOtpSent] = React.useState(false);
   const [signupData, setSignupData] = React.useState<SignUpType | null>(null);
@@ -119,7 +120,9 @@ const SignUpForm = () => {
 
       toast.success("Account created successfully");
       // Navigate to home/dashboard after successful signup
-      navigate({ to: "/" });
+      // Invalidate stale unauthenticated root loader data first (see login).
+      await router.invalidate();
+      await navigate({ to: "/" });
     } catch (error) {
       console.error("OTP verification API exception:", error);
       setApiError("Network error. Please try again.");
