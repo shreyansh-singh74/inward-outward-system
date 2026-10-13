@@ -1,8 +1,10 @@
+from typing import Optional
 from pydantic import BaseModel, EmailStr, Field
 
 
 class SignUpSchema(BaseModel):
     name: str = Field(..., min_length=1, max_length=30)
+    role: Optional[str] = Field(default="student", min_length=1, max_length=50)
     department: str = Field(..., min_length=1, max_length=200)
     email: EmailStr
 

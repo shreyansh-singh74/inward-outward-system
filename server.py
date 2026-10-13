@@ -89,6 +89,8 @@ async def authenticate(access_token: str = Cookie(None)):
             "username": user_response.get("username"),
             "role": normalize_role(user_response.get("role") or ""),
             "department": user_response.get("department"),
+            "isEmailVerified": user_response.get("isEmailVerified", False),
+            "created_at": user_response.get("created_at"),
         },
         status_code=200,
     )

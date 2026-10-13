@@ -5,6 +5,7 @@ import {
   Search,
   Settings,
   ChartNoAxesColumnIncreasing,
+  CircleUserRound,
 } from "lucide-react";
 
 import {
@@ -58,6 +59,13 @@ const items = [
       router.navigate({ to: "/stats" });
     },
     icon: ChartNoAxesColumnIncreasing,
+  },
+  {
+    title: "Profile",
+    function: () => {
+      router.navigate({ to: "/profile" });
+    },
+    icon: CircleUserRound,
   },
   {
     title: "Logout",

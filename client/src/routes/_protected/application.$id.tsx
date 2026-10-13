@@ -103,14 +103,19 @@ function RouteComponent() {
   };
 
   const handleVerified = async () => {
-    const res = await fetch(`/api/application/verify/${id}`, {
-      method: "POST",
-    });
-    if (res.status !== 200) {
+    try {
+      const res = await fetch(`/api/application/verify/${id}`, {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => null);
+      if (res.status !== 200) {
+        toast.error(data?.message || "Failed to mark application as verified");
+      } else {
+        toast.success("Application marked as verified");
+        navigate({ to: "/hand_in" });
+      }
+    } catch {
       toast.error("Failed to mark application as verified");
-    } else {
-      toast.success("Application marked as verified");
-      navigate({ to: "/hand_in" });
     }
   };
   return (
@@ -234,20 +239,29 @@ function RouteComponent() {
               Forward
             </Button>
           </CardFooter>
+        ) : (user.role === "clerk" || user.role === "system_admin") &&
+          (application.current_handler_id === user?.id ||
+            user.role === "system_admin") ? (
+          <CardFooter className="flex justify-between flex-col md:flex-row gap-4">
+            <IncompleteDialog id={id}>
+              <Button className="bg-blue-500 hover:bg-blue-600 w-full md:w-[45%]">
+                Incomplete
+              </Button>
+            </IncompleteDialog>
+            <Button
+              className="bg-green-500 hover:bg-green-600 w-full md:w-[45%]"
+              onClick={() => handleVerified()}
+            >
+              Verified
+            </Button>
+          </CardFooter>
         ) : (
           user.role === "clerk" && (
-            <CardFooter className="flex justify-between flex-col md:flex-row gap-4">
-              <IncompleteDialog id={id}>
-                <Button className="bg-blue-500 hover:bg-blue-600 w-full md:w-[45%]">
-                  Incomplete
-                </Button>
-              </IncompleteDialog>
-              <Button
-                className="bg-green-500 hover:bg-green-600 w-full md:w-[45%]"
-                onClick={() => handleVerified()}
-              >
-                Verified
-              </Button>
+            <CardFooter>
+              <p className="text-sm text-muted-foreground text-center w-full">
+                Waiting with the current handler — only they can mark this
+                verified.
+              </p>
             </CardFooter>
           )
         )}

@@ -57,7 +57,16 @@ export const Route = createRootRoute({
           });
         }
       } else {
-        setAtom(data);
+        setAtom({
+          id: data.id,
+          username: data.username ?? data.name ?? "",
+          name: data.name ?? data.username ?? "",
+          email: data.email ?? "",
+          role: data.role ?? "",
+          department: data.department ?? "",
+          isEmailVerified: data.isEmailVerified,
+          created_at: data.created_at,
+        });
       }
     }, [data, location.pathname, navigate, setAtom]);
 

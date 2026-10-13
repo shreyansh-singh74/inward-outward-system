@@ -187,12 +187,13 @@ def store_otp(email, otp, expiry_minutes=5):
         }
     return True
 
-def store_user_registration_data(email, name, department):
+def store_user_registration_data(email, name, department, role="student"):
     """Store user registration data temporarily until OTP verification"""
     if use_redis:
         data = {
             'name': name,
             'department': department,
+            'role': role,
             'timestamp': datetime.now(timezone.utc).isoformat()
         }
         redis_client.setex(f"reg:{email}", timedelta(minutes=30), json.dumps(data))
@@ -200,6 +201,7 @@ def store_user_registration_data(email, name, department):
         user_reg_data[email] = {
             'name': name,
             'department': department,
+            'role': role,
             'timestamp': datetime.now(timezone.utc)
         }
 
@@ -294,4 +296,3 @@ def decode_url_safe_token(token: str):
     except Exception as e:
         logging.error(str(e))
         return None
-

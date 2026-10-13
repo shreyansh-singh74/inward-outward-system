@@ -37,20 +37,25 @@ function RouteComponent() {
   const onSubmit = async (values: createApplicationType) => {
     const formdata = objectToFormData(values);
     setPending(true);
-    const res = await fetch(
-      `/api/application/update_app/${currentApplication?.id}`,
-      {
-        method: "POST",
-        body: formdata,
+    try {
+      const res = await fetch(
+        `/api/application/update_app/${currentApplication?.id}`,
+        {
+          method: "POST",
+          body: formdata,
+        }
+      );
+      const data = await res.json().catch(() => null);
+      if (res.status !== 200) {
+        toast.error(data?.message || "Failed to update application");
+      } else {
+        toast.success("Application updated successfully");
+        form.reset();
       }
-    );
-    if (res.status !== 200) {
+    } catch {
       toast.error("Failed to update application");
-    } else {
-      toast.success("Application updated successfully");
     }
     setPending(false);
-    form.reset();
   };
   return (
     <div>
@@ -69,13 +74,20 @@ function RouteComponent() {
                     name="for_user"
                     placeholder="Select whom you want to give this application"
                   />
-                  <Input name="subject" label="Enter the subject" />
+                  <Input name="subject" label="Enter the subject" maxLength={200} />
                   <TextArea
                     label="Description of query"
                     name="description"
                     placeholder="Enter the description of your query"
+                    maxLength={256}
                   />
-                  <Input type="file" name="document" label="Document" />
+                  <Input
+                    type="file"
+                    name="document"
+                    label="Document"
+                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                    hint="Only PDF, JPG, JPEG, PNG, DOC, DOCX up to 5 MB."
+                  />
                   <Button
                     className="bg-[#d17a00] w-full mt-3"
                     disabled={pending}

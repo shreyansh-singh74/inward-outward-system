@@ -14,12 +14,16 @@ export const Input = ({
   type = "text",
   placeholder,
   maxLength,
+  accept,
+  hint,
 }: {
   label: string;
   name: string;
   type?: string;
   placeholder?: string;
   maxLength?: number;
+  accept?: string;
+  hint?: string;
 }) => {
   const form = useFormContext();
 
@@ -32,13 +36,19 @@ export const Input = ({
           <FormLabel className="text-md font-semibold">{label}</FormLabel>
           <FormControl>
             {type === "file" ? (
-              <ShadCnInput
-                type="file"
-                onChange={(e) => {
-                  const file = e.target.files ? e.target.files[0] : null;
-                  field.onChange(file); // Handle file input change
-                }}
-              />
+              <>
+                <ShadCnInput
+                  type="file"
+                  accept={accept}
+                  onChange={(e) => {
+                    const file = e.target.files ? e.target.files[0] : null;
+                    field.onChange(file); // Handle file input change
+                  }}
+                />
+                {hint && (
+                  <p className="text-xs text-muted-foreground mt-1">{hint}</p>
+                )}
+              </>
             ) : (
               <ShadCnInput
                 {...field}

@@ -7,15 +7,26 @@ from .schema import (
 import bcrypt
 from sqlalchemy import Select as select
 from sqlalchemy.orm import Session
-from db.models import User, VerificationToken
+from db.models import User, VerificationToken, UserRole, normalize_role
 from fastapi import APIRouter, status, Response, Cookie, Request
 from config import engine, ACCESS_TOKEN_EXPIRY, create_access_token, PRODUCTION
 from datetime import timedelta
 from mail import create_message
-from .utils import generate_otp, store_otp, verify_otp, can_send_new_otp, store_user_registration_data, get_user_registration_data, client_ip, is_rate_limited, hit_email_verify_limit, clear_email_verify_limit, hit_email_send_limit
+from .utils import (
+    generate_otp,
+    store_otp,
+    verify_otp,
+    can_send_new_otp,
+    store_user_registration_data,
+    get_user_registration_data,
+    client_ip,
+    is_rate_limited,
+    hit_email_verify_limit,
+    clear_email_verify_limit,
+    hit_email_send_limit,
+)
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import HTTPException
-from db.models import UserRole
 from dotenv import load_dotenv
 from uuid import uuid4
 from datetime import datetime, timezone
@@ -33,7 +44,7 @@ async def signup(user: SignUpSchema, request: Request):
     if is_rate_limited("otp_send", client_ip(request)):
         return JSONResponse(
             content={"message": "Too many requests. Please try again later."},
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         )
     # Check if user already exists - use generic message to prevent account enumeration
     with Session(engine) as session:
@@ -42,30 +53,34 @@ async def signup(user: SignUpSchema, request: Request):
         if results:
             return JSONResponse(
                 content={"message": "Account already exists. Please sign in instead."},
-                status_code=status.HTTP_400_BAD_REQUEST
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
-    
+
     # Check if we can send a new OTP (rate limiting)
     if not can_send_new_otp(user.email):
         return JSONResponse(
             content={"message": "Please wait before requesting a new OTP"},
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         )
 
     # Per-email send cap (primary anti-abuse now that IP limit is loose)
     if hit_email_send_limit(user.email):
         return JSONResponse(
-            content={"message": "Too many OTPs sent to this email. Please try again in an hour."},
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+            content={
+                "message": "Too many OTPs sent to this email. Please try again in an hour."
+            },
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         )
-    
-    # Store user registration data temporarily
-    store_user_registration_data(user.email, user.name, user.department)
-    
+
+    # Store user registration data temporarily including selected role
+    store_user_registration_data(
+        user.email, user.name, user.department, user.role or "student"
+    )
+
     # Generate OTP
     otp = generate_otp()
     store_otp(user.email, otp)
-    
+
     # Send OTP via email
     html = f"""<!DOCTYPE html>
     <html lang="en">
@@ -89,7 +104,7 @@ async def signup(user: SignUpSchema, request: Request):
         </div>
     </body>
     </html>"""
-    
+
     subject = "Your OTP for Account Verification"
     emails = [user.email]
     try:
@@ -99,11 +114,10 @@ async def signup(user: SignUpSchema, request: Request):
             content={"message": "Could not send OTP email. Please try again later."},
             status_code=status.HTTP_502_BAD_GATEWAY,
         )
-    
+
     # Return a clear response so the user knows the OTP was sent.
     return JSONResponse(
-        content={"message": "OTP sent to your email"},
-        status_code=status.HTTP_200_OK
+        content={"message": "OTP sent to your email"}, status_code=status.HTTP_200_OK
     )
 
 
@@ -114,76 +128,83 @@ async def verify_signup_otp(verification: OTPVerificationSchema, request: Reques
     if is_rate_limited("otp_verify", client_ip(request)):
         return JSONResponse(
             content={"message": "Too many attempts. Please try again later."},
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         )
     # Per-email throttle (distributed brute-force / OTP-burn protection)
     if hit_email_verify_limit(verification.email):
         return JSONResponse(
-            content={"message": "Too many attempts for this email. Please request a new OTP and try again in 15 minutes."},
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+            content={
+                "message": "Too many attempts for this email. Please request a new OTP and try again in 15 minutes."
+            },
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         )
     # Verify the OTP
     if not verify_otp(verification.email, verification.otp):
         return JSONResponse(
             content={"message": "Invalid or expired OTP"},
-            status_code=status.HTTP_400_BAD_REQUEST
+            status_code=status.HTTP_400_BAD_REQUEST,
         )
     clear_email_verify_limit(verification.email)
-    
+
     # Retrieve stored user registration data
     user_data = get_user_registration_data(verification.email)
     if not user_data:
         return JSONResponse(
-            content={"message": "Registration session expired. Please try signing up again."},
-            status_code=status.HTTP_400_BAD_REQUEST
+            content={
+                "message": "Registration session expired. Please try signing up again."
+            },
+            status_code=status.HTTP_400_BAD_REQUEST,
         )
-    
-    # Create the user
+
+    # Create the user with their normalized role
     newUserId = uuid4()
+    raw_role = user_data.get("role", UserRole.STUDENT.value)
+    assigned_role = normalize_role(raw_role)
     newUser = User(
         id=newUserId,
         tcet_email=verification.email,
-        username=user_data['name'],
-        role=UserRole.STUDENT,
-        department=user_data['department'],
-        isEmailVerified=True  # Mark as verified immediately
+        username=user_data["name"],
+        role=assigned_role,
+        department=user_data["department"],
+        isEmailVerified=True,  # Mark as verified immediately
     )
-    
+
     # Save to database
     with Session(engine) as session:
         statement = select(User).where(User.tcet_email == verification.email)
         existing_user = session.scalars(statement).first()
-        
+
         if existing_user:
             return JSONResponse(
                 content={"message": "User already exists"},
-                status_code=status.HTTP_400_BAD_REQUEST
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         session.add(newUser)
         session.commit()
-    
+
     # Create and return JWT token
     access_token = create_access_token(
         data={"sub": str(newUserId)},
     )
-    
+
     response = JSONResponse(
         content={"message": "User created successfully"},
-        status_code=status.HTTP_201_CREATED
+        status_code=status.HTTP_201_CREATED,
     )
-    
+
     response.set_cookie(
         key="access_token",
         value=access_token,
-        max_age=int(ACCESS_TOKEN_EXPIRY) * 60 if ACCESS_TOKEN_EXPIRY.isdigit() else 3600 * 24,
+        max_age=int(ACCESS_TOKEN_EXPIRY) * 60
+        if ACCESS_TOKEN_EXPIRY.isdigit()
+        else 3600 * 24,
         path="/",
         httponly=True,
         secure=PRODUCTION,
-        samesite="lax"
+        samesite="lax",
     )
 
-    
     return response
 
 
@@ -194,41 +215,47 @@ async def login(body: LoginSchema, request: Request):
     if is_rate_limited("otp_send", client_ip(request)):
         return JSONResponse(
             content={"message": "Too many requests. Please try again later."},
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         )
     with Session(engine) as session:
         statement = select(User).where(User.tcet_email == body.email)
         user = session.scalars(statement).first()
         if not user:
             return JSONResponse(
-                content={"message": "No account found with this email. Please sign up first."},
-                status_code=status.HTTP_404_NOT_FOUND
+                content={
+                    "message": "No account found with this email. Please sign up first."
+                },
+                status_code=status.HTTP_404_NOT_FOUND,
             )
 
         if not user.isEmailVerified:
             return JSONResponse(
-                content={"message": "Email not verified. Please sign up again to verify your email."},
-                status_code=status.HTTP_403_FORBIDDEN
+                content={
+                    "message": "Email not verified. Please sign up again to verify your email."
+                },
+                status_code=status.HTTP_403_FORBIDDEN,
             )
 
     # Per-email send cap (primary anti-abuse now that IP limit is loose)
     if hit_email_send_limit(body.email):
         return JSONResponse(
-            content={"message": "Too many OTPs sent to this email. Please try again in an hour."},
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+            content={
+                "message": "Too many OTPs sent to this email. Please try again in an hour."
+            },
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         )
 
     # Check if we can send a new OTP (rate limiting)
     if not can_send_new_otp(body.email):
         return JSONResponse(
             content={"message": "Please wait before requesting a new OTP"},
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         )
-    
+
     # Generate OTP
     otp = generate_otp()
     store_otp(body.email, otp)
-    
+
     # Send OTP via email
     html = f"""<!DOCTYPE html>
     <html lang="en">
@@ -252,7 +279,7 @@ async def login(body: LoginSchema, request: Request):
         </div>
     </body>
     </html>"""
-    
+
     subject = "Your Login OTP"
     emails = [body.email]
     try:
@@ -262,10 +289,9 @@ async def login(body: LoginSchema, request: Request):
             content={"message": "Could not send OTP email. Please try again later."},
             status_code=status.HTTP_502_BAD_GATEWAY,
         )
-    
+
     return JSONResponse(
-        content={"message": "OTP sent to your email"},
-        status_code=status.HTTP_200_OK
+        content={"message": "OTP sent to your email"}, status_code=status.HTTP_200_OK
     )
 
 
@@ -276,54 +302,56 @@ async def verify_login_otp(verification: OTPVerificationSchema, request: Request
     if is_rate_limited("otp_verify", client_ip(request)):
         return JSONResponse(
             content={"message": "Too many attempts. Please try again later."},
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         )
     # Per-email throttle (distributed brute-force / OTP-burn protection)
     if hit_email_verify_limit(verification.email):
         return JSONResponse(
-            content={"message": "Too many attempts for this email. Please request a new OTP and try again in 15 minutes."},
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+            content={
+                "message": "Too many attempts for this email. Please request a new OTP and try again in 15 minutes."
+            },
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         )
     # Verify the OTP
     if not verify_otp(verification.email, verification.otp):
         return JSONResponse(
             content={"message": "Invalid or expired OTP"},
-            status_code=status.HTTP_400_BAD_REQUEST
+            status_code=status.HTTP_400_BAD_REQUEST,
         )
     clear_email_verify_limit(verification.email)
-    
+
     # Get user from database
     with Session(engine) as session:
         statement = select(User).where(User.tcet_email == verification.email)
         user = session.scalars(statement).first()
-        
+
         if not user:
             return JSONResponse(
                 content={"message": "User not found"},
-                status_code=status.HTTP_401_UNAUTHORIZED
+                status_code=status.HTTP_401_UNAUTHORIZED,
             )
-    
+
     # Create access token
     access_token = create_access_token(
         data={"sub": str(user.id)},
     )
-    
+
     response = JSONResponse(
-        content={"message": "Login successful"},
-        status_code=status.HTTP_200_OK
+        content={"message": "Login successful"}, status_code=status.HTTP_200_OK
     )
-    
+
     response.set_cookie(
         key="access_token",
         value=access_token,
-        max_age=int(ACCESS_TOKEN_EXPIRY) * 60 if ACCESS_TOKEN_EXPIRY.isdigit() else 3600 * 24,
+        max_age=int(ACCESS_TOKEN_EXPIRY) * 60
+        if ACCESS_TOKEN_EXPIRY.isdigit()
+        else 3600 * 24,
         path="/",
         httponly=True,
         secure=PRODUCTION,
-        samesite="lax"
+        samesite="lax",
     )
 
-    
     return response
 
 
@@ -334,7 +362,7 @@ async def resend_otp(body: ResendOTPSchema, request: Request):
     if is_rate_limited("otp_send", client_ip(request)):
         return JSONResponse(
             content={"message": "Too many requests. Please try again later."},
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         )
     # Check if user exists
     with Session(engine) as session:
@@ -343,28 +371,32 @@ async def resend_otp(body: ResendOTPSchema, request: Request):
 
         if not user:
             return JSONResponse(
-                content={"message": "No account found with this email. Please sign up first."},
-                status_code=status.HTTP_404_NOT_FOUND
+                content={
+                    "message": "No account found with this email. Please sign up first."
+                },
+                status_code=status.HTTP_404_NOT_FOUND,
             )
-    
+
     # Check if we can send a new OTP (rate limiting)
     if not can_send_new_otp(body.email):
         return JSONResponse(
             content={"message": "Please wait before requesting a new OTP"},
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         )
 
     # Per-email send cap (primary anti-abuse now that IP limit is loose)
     if hit_email_send_limit(body.email):
         return JSONResponse(
-            content={"message": "Too many OTPs sent to this email. Please try again in an hour."},
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+            content={
+                "message": "Too many OTPs sent to this email. Please try again in an hour."
+            },
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         )
-    
+
     # Generate OTP
     otp = generate_otp()
     store_otp(body.email, otp)
-    
+
     # Send OTP via email
     html = f"""<!DOCTYPE html>
     <html lang="en">
@@ -388,7 +420,7 @@ async def resend_otp(body: ResendOTPSchema, request: Request):
         </div>
     </body>
     </html>"""
-    
+
     subject = "Your New OTP"
     emails = [body.email]
     try:
@@ -398,10 +430,9 @@ async def resend_otp(body: ResendOTPSchema, request: Request):
             content={"message": "Could not send OTP email. Please try again later."},
             status_code=status.HTTP_502_BAD_GATEWAY,
         )
-    
+
     return JSONResponse(
-        content={"message": "New OTP sent to your email"},
-        status_code=status.HTTP_200_OK
+        content={"message": "New OTP sent to your email"}, status_code=status.HTTP_200_OK
     )
 
 
@@ -409,19 +440,17 @@ async def resend_otp(body: ResendOTPSchema, request: Request):
 async def logout():
     """Logout user by clearing the JWT cookie"""
     response = JSONResponse(
-        content={"message": "Logged out successfully"},
-        status_code=status.HTTP_200_OK
+        content={"message": "Logged out successfully"}, status_code=status.HTTP_200_OK
     )
-    
+
     response.delete_cookie(
         key="access_token",
         path="/",
         httponly=True,
         secure=PRODUCTION,
-        samesite="lax"
+        samesite="lax",
     )
 
-    
     return response
 
 
@@ -430,6 +459,8 @@ async def logout():
 async def verify_user_account(token: str):
     """Legacy endpoint for backward compatibility"""
     return JSONResponse(
-        content={"message": "This endpoint is deprecated. Please use the new OTP-based authentication."},
-        status_code=status.HTTP_410_GONE
+        content={
+            "message": "This endpoint is deprecated. Please use the new OTP-based authentication."
+        },
+        status_code=status.HTTP_410_GONE,
     )

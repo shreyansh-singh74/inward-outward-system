@@ -14,6 +14,8 @@ class UserRole(str, PyEnum):
     STUDENT = "student"
     PRINCIPAL = "principal"
     HOD = "hod"
+    ASSOCIATE_HOD = "associate_hod"
+    FACULTY = "faculty"
     EXAM_SECTION = "exam_section"
     T_AND_P = "t_and_p"
     HOC = "hoc"
@@ -35,8 +37,14 @@ ROLE_ALIASES = {
     "hostel": "hostel",
     "accounts": "accounts",
     "admin": "admin",
-    "faculty": "faculty",
+    "faculty": UserRole.FACULTY.value,
     "ict": "ict",
+    "associate_hod": UserRole.ASSOCIATE_HOD.value,
+    "associate hod": UserRole.ASSOCIATE_HOD.value,
+    "associate_dean": UserRole.ASSOCIATE_DEAN.value,
+    "associate dean": UserRole.ASSOCIATE_DEAN.value,
+    "vice_principal": UserRole.VICE_PRINCIPAL.value,
+    "vice principal": UserRole.VICE_PRINCIPAL.value,
 }
 
 

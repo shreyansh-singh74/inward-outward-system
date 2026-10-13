@@ -10,3 +10,7 @@ media/
 
 # Node
 node_modules/
+
+# Local-only compose files (never auto-loaded by plain `docker compose up`)
+docker-compose.local.yml
+docker-compose.override.yml

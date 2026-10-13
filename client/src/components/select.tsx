@@ -28,14 +28,17 @@ const SearchableSelectFormControl = ({
   placeholder,
   name,
   label,
+  getLabel,
 }: {
   options: string[];
   placeholder: string;
   name: string;
   label: string;
+  getLabel?: (option: string) => string;
 }) => {
   const form = useFormContext();
   const [open, setOpen] = React.useState(false);
+  const displayLabel = (option: string) => (getLabel ? getLabel(option) : option);
   return (
     <FormField
       control={form.control}
@@ -58,7 +61,9 @@ const SearchableSelectFormControl = ({
                   )}
                 >
                   {field.value
-                    ? options.find((option) => option === field.value)
+                    ? (options.find((option) => option === field.value) &&
+                      displayLabel(field.value)) ||
+                      placeholder
                     : placeholder}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -87,7 +92,7 @@ const SearchableSelectFormControl = ({
                             option === field.value ? "opacity-100" : "opacity-0"
                           )}
                         />
-                        <span>{option}</span>
+                        <span>{displayLabel(option)}</span>
                       </CommandItem>
                     ))}
                 </CommandList>

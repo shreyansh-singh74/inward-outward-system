@@ -3,9 +3,14 @@ import { atom } from "jotai";
 import { DocumentRecord } from "@/routes/_protected/";
 export interface UserInterface {
   id: string;
+  username: string;
+  /** Display name alias (same as username, kept for backwards compat). */
   name: string;
+  email: string;
   role: string;
   department: string;
+  isEmailVerified?: boolean;
+  created_at?: string;
 }
 interface currentApplication {
   id: string;

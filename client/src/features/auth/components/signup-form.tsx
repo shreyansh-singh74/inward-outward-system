@@ -6,7 +6,7 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { Input } from "@/components/Input";
-import { FormProvider, useForm } from "react-hook-form";
+import { FormProvider, useForm, useWatch } from "react-hook-form";
 import {
   OTPVerificationSchema,
   OTPVerificationType,
@@ -18,7 +18,12 @@ import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import SelectFormControl from "@/components/select";
-import { SignupDepartments } from "@/contants";
+import {
+  SignupDepartments,
+  DeanPortfolios,
+  DeanPortfolioLabels,
+  TeacherDesignations,
+} from "@/contants";
 import { toast } from "sonner";
 
 const SignUpForm = () => {
@@ -29,19 +34,60 @@ const SignUpForm = () => {
   const [signupData, setSignupData] = React.useState<SignUpType | null>(null);
   const [apiError, setApiError] = React.useState<string | null>(null);
 
-  // Debug state changes
-  React.useEffect(() => {
-  }, [otpSent, signupData]);
-
   // Signup form
   const signupForm = useForm<SignUpType>({
     resolver: zodResolver(SignupSchema),
     defaultValues: {
       name: "",
       email: "",
+      userType: "student",
+      designation: "",
       department: "",
     },
   });
+
+  const userType = useWatch({
+    control: signupForm.control,
+    name: "userType",
+  });
+
+  const designation = useWatch({
+    control: signupForm.control,
+    name: "designation",
+  });
+
+  // Automatically assign department for Principal and Vice Principal,
+  // and clear stale department when designation changes (prevents blank dropdown)
+  React.useEffect(() => {
+    if (userType === "teacher") {
+      if (designation === "Principal") {
+        signupForm.setValue("department", "PRINCIPAL", {
+          shouldValidate: true,
+        });
+      } else if (designation === "Vice Principal") {
+        signupForm.setValue("department", "VICE_PRINCIPAL", {
+          shouldValidate: true,
+        });
+      } else if (
+        designation === "Dean" ||
+        designation === "Associate Dean"
+      ) {
+        const current = signupForm.getValues("department");
+        if (current && !DeanPortfolios.includes(current)) {
+          signupForm.setValue("department", "", { shouldValidate: true });
+        }
+      } else if (
+        designation === "HOD" ||
+        designation === "Associate HOD" ||
+        designation === "Faculty"
+      ) {
+        const current = signupForm.getValues("department");
+        if (current && !SignupDepartments.includes(current)) {
+          signupForm.setValue("department", "", { shouldValidate: true });
+        }
+      }
+    }
+  }, [designation, userType, signupForm]);
 
   // OTP verification form
   const otpForm = useForm<OTPVerificationType>({
@@ -57,15 +103,54 @@ const SignUpForm = () => {
     setPending(true);
     setApiError(null);
 
+    let role = "student";
+    let department = values.department || "";
+
+    if (values.userType === "teacher") {
+      switch (values.designation) {
+        case "Principal":
+          role = "principal";
+          department = "PRINCIPAL";
+          break;
+        case "Vice Principal":
+          role = "vice_principal";
+          department = "VICE_PRINCIPAL";
+          break;
+        case "Dean":
+          role = "dean";
+          break;
+        case "Associate Dean":
+          role = "associate_dean";
+          break;
+        case "HOD":
+          role = "hod";
+          break;
+        case "Associate HOD":
+          role = "associate_hod";
+          break;
+        case "Faculty":
+          role = "faculty";
+          break;
+        default:
+          role = "faculty";
+      }
+    }
+
+    const payload = {
+      name: values.name,
+      email: values.email,
+      role: role,
+      department: department,
+    };
+
     try {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify(payload),
       });
-
 
       const responseData = await res.json();
 
@@ -120,7 +205,6 @@ const SignUpForm = () => {
 
       toast.success("Account created successfully");
       // Navigate to home/dashboard after successful signup
-      // Invalidate stale unauthenticated root loader data first (see login).
       await router.invalidate();
       await navigate({ to: "/" });
     } catch (error) {
@@ -174,7 +258,6 @@ const SignUpForm = () => {
     otpForm.reset(); // Reset OTP form completely
   };
 
-
   return (
     <Card className="w-[90%] md:w-[50%] lg:w-[40%] m-auto">
       <CardHeader>
@@ -199,13 +282,133 @@ const SignUpForm = () => {
               <FormProvider {...signupForm}>
                 <Input label="Email" name="email" />
                 <Input label="Username" name="name" />
-                <SelectFormControl
-                  options={SignupDepartments}
-                  placeholder="Select a department"
-                  name="department"
-                  label="Department"
-                />
+
+                {/* Filter for Student or Teacher */}
+                <div className="space-y-2">
+                  <label className="text-md font-semibold">I am a</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant={userType === "student" ? "default" : "outline"}
+                      className={
+                        userType === "student"
+                          ? "bg-[#d17a00] hover:bg-[#a05e00] text-white"
+                          : "hover:bg-muted"
+                      }
+                      onClick={() => {
+                        signupForm.setValue("userType", "student", {
+                          shouldValidate: true,
+                        });
+                        signupForm.setValue("designation", "");
+                        signupForm.setValue("department", "");
+                      }}
+                    >
+                      Student
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={userType === "teacher" ? "default" : "outline"}
+                      className={
+                        userType === "teacher"
+                          ? "bg-[#d17a00] hover:bg-[#a05e00] text-white"
+                          : "hover:bg-muted"
+                      }
+                      onClick={() => {
+                        signupForm.setValue("userType", "teacher", {
+                          shouldValidate: true,
+                        });
+                        signupForm.setValue("designation", "");
+                        signupForm.setValue("department", "");
+                      }}
+                    >
+                      Teacher
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Student: Choose Department */}
+                {userType === "student" && (
+                  <SelectFormControl
+                    options={SignupDepartments}
+                    placeholder="Select a department"
+                    name="department"
+                    label="Department"
+                  />
+                )}
+
+                {/* Teacher: Designation and Portfolio/Department Selection */}
+                {userType === "teacher" && (
+                  <>
+                    <SelectFormControl
+                      options={[...TeacherDesignations]}
+                      placeholder="Select teacher designation"
+                      name="designation"
+                      label="Designation"
+                    />
+
+                    {/* Dean portfolios */}
+                    {designation === "Dean" && (
+                      <SelectFormControl
+                        options={DeanPortfolios}
+                        getLabel={(v) => DeanPortfolioLabels[v] ?? v}
+                        placeholder="Select Dean portfolio"
+                        name="department"
+                        label="Dean Portfolio"
+                      />
+                    )}
+
+                    {/* Associate Dean portfolios */}
+                    {designation === "Associate Dean" && (
+                      <SelectFormControl
+                        options={DeanPortfolios}
+                        getLabel={(v) => DeanPortfolioLabels[v] ?? v}
+                        placeholder="Select Associate Dean portfolio"
+                        name="department"
+                        label="Associate Dean Portfolio"
+                      />
+                    )}
+
+                    {/* HOD departments */}
+                    {designation === "HOD" && (
+                      <SelectFormControl
+                        options={SignupDepartments}
+                        placeholder="Select HOD department"
+                        name="department"
+                        label="Department"
+                      />
+                    )}
+
+                    {/* Associate HOD departments */}
+                    {designation === "Associate HOD" && (
+                      <SelectFormControl
+                        options={SignupDepartments}
+                        placeholder="Select Associate HOD department"
+                        name="department"
+                        label="Department"
+                      />
+                    )}
+
+                    {/* Faculty departments */}
+                    {designation === "Faculty" && (
+                      <SelectFormControl
+                        options={SignupDepartments}
+                        placeholder="Select Faculty department"
+                        name="department"
+                        label="Department"
+                      />
+                    )}
+
+                    {/* Principal / Vice Principal confirmation */}
+                    {(designation === "Principal" ||
+                      designation === "Vice Principal") && (
+                      <div className="p-3 text-sm rounded-md bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900">
+                        Designation {designation} selected.
+                      </div>
+                    )}
+                  </>
+                )}
               </FormProvider>
+
               <Button
                 className="bg-[#d17a00] w-full text-white text-[16px]"
                 disabled={pending}
@@ -273,7 +476,7 @@ const SignUpForm = () => {
       </CardContent>
       <CardFooter className="flex flex-col gap-2 w-full">
         <Link
-          className="border-[#d17a00] border-2  hover:border-[#d17a00]  text-black text-[16px] rounded-lg py-1 text-center w-full"
+          className="border-[#d17a00] border-2 hover:border-[#d17a00] text-black text-[16px] rounded-lg py-1 text-center w-full"
           to="/login"
         >
           Sign-in

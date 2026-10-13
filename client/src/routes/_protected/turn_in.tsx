@@ -29,17 +29,22 @@ function RouteComponent() {
   const onSubmit = async (values: createApplicationType) => {
     const formdata = objectToFormData(values);
     setPending(true);
-    const res = await fetch(`/api/application/create`, {
-      method: "POST",
-      body: formdata,
-    });
-    if (res.status !== 200) {
+    try {
+      const res = await fetch(`/api/application/create`, {
+        method: "POST",
+        body: formdata,
+      });
+      const data = await res.json().catch(() => null);
+      if (res.status !== 200) {
+        toast.error(data?.message || "Failed to create application");
+      } else {
+        toast.success("Application created successfully");
+        form.reset();
+      }
+    } catch {
       toast.error("Failed to create application");
-    } else {
-      toast.success("Application created successfully");
     }
     setPending(false);
-    form.reset();
   };
   return (
     <div className="flex lg:w-[80dvw] h-full flex-grow  justify-center items-center">
@@ -57,13 +62,20 @@ function RouteComponent() {
                   name="for_user"
                   placeholder="Select Receiver"
                 />
-                <Input name="subject" label="Enter the subject" />
+                <Input name="subject" label="Enter the subject" maxLength={200} />
                 <TextArea
                   label="Description of query"
                   name="description"
                   placeholder="Enter the description of your query"
+                  maxLength={256}
                 />
-                <Input type="file" name="document" label="Document" />
+                <Input
+                  type="file"
+                  name="document"
+                  label="Document"
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                  hint="Only PDF, JPG, JPEG, PNG, DOC, DOCX up to 5 MB."
+                />
                 <Button className="bg-[#d17a00] w-full mt-3" disabled={pending}>
                   {pending ? "Submitting..." : "Submit"}
                 </Button>
